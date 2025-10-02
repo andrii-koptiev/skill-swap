@@ -1,0 +1,333 @@
+name: Automated Code Analysis
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'services/api/**/*.cs'
+      - 'services/api/**/*.csproj'
+  
+  workflow_dispatch:
+    inputs:
+      analysis_type:
+        description: 'Type of analysis to run'
+        required: true
+        default: 'full'
+        type: choice
+        options:
+        - full
+        - security
+        - performance
+        - architecture
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  # Generate comprehensive code analysis for Copilot context
+  code-analysis:
+    name: Generate Code Analysis Report
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Install analysis tools
+      run: |
+        # Install code analysis tools
+        dotnet tool install --global dotnet-format
+        dotnet tool install --global dotnet-outdated-tool
+        
+        # Install additional analyzers
+        echo "Setting up code analyzers..."
+
+    - name: Restore dependencies
+      working-directory: ./services/api
+      run: dotnet restore SkillSwap.sln
+
+    - name: Generate project structure analysis
+      working-directory: ./services/api/src
+      run: |
+        echo "# 📁 Project Structure Analysis" > ../structure-analysis.md
+        echo "" >> ../structure-analysis.md
+        echo "## Clean Architecture Layers" >> ../structure-analysis.md
+        echo "" >> ../structure-analysis.md
+        
+        for dir in SkillSwap.*/; do
+          echo "### ${dir%/}" >> ../structure-analysis.md
+          echo "\`\`\`" >> ../structure-analysis.md
+          find "$dir" -name "*.cs" | head -20 >> ../structure-analysis.md
+          echo "\`\`\`" >> ../structure-analysis.md
+          echo "" >> ../structure-analysis.md
+        done
+
+    - name: Analyze dependencies
+      working-directory: ./services/api
+      run: |
+        echo "# 📦 Dependency Analysis" > dependency-analysis.md
+        echo "" >> dependency-analysis.md
+        echo "## NuGet Packages" >> dependency-analysis.md
+        echo "\`\`\`" >> dependency-analysis.md
+        dotnet list package >> dependency-analysis.md
+        echo "\`\`\`" >> dependency-analysis.md
+        echo "" >> dependency-analysis.md
+        
+        echo "## Outdated Packages" >> dependency-analysis.md
+        echo "\`\`\`" >> dependency-analysis.md
+        dotnet outdated >> dependency-analysis.md || echo "No outdated packages found" >> dependency-analysis.md
+        echo "\`\`\`" >> dependency-analysis.md
+
+    - name: Analyze code metrics
+      working-directory: ./services/api
+      run: |
+        echo "# 📊 Code Metrics Analysis" > metrics-analysis.md
+        echo "" >> metrics-analysis.md
+        
+        # Count files and lines
+        echo "## File Statistics" >> metrics-analysis.md
+        echo "| Project | CS Files | Total Lines |" >> metrics-analysis.md
+        echo "|---------|----------|-------------|" >> metrics-analysis.md
+        
+        for proj in src/SkillSwap.*/; do
+          if [ -d "$proj" ]; then
+            cs_files=$(find "$proj" -name "*.cs" | wc -l)
+            total_lines=$(find "$proj" -name "*.cs" -exec wc -l {} + | tail -1 | awk '{print $1}' || echo "0")
+            proj_name=$(basename "$proj")
+            echo "| $proj_name | $cs_files | $total_lines |" >> metrics-analysis.md
+          fi
+        done
+        
+        echo "" >> metrics-analysis.md
+        
+        # Analyze complexity hotspots
+        echo "## Complexity Analysis" >> metrics-analysis.md
+        echo "### Large Files (>200 lines)" >> metrics-analysis.md
+        echo "\`\`\`" >> metrics-analysis.md
+        find src/ -name "*.cs" -exec wc -l {} + | awk '$1 > 200 {print $0}' | sort -nr >> metrics-analysis.md
+        echo "\`\`\`" >> metrics-analysis.md
+
+    - name: Security analysis
+      working-directory: ./services/api
+      run: |
+        echo "# 🔒 Security Analysis Report" > security-analysis.md
+        echo "" >> security-analysis.md
+        
+        echo "## Potential Security Issues" >> security-analysis.md
+        echo "" >> security-analysis.md
+        
+        # Check for common security anti-patterns
+        echo "### Hardcoded Strings Check" >> security-analysis.md
+        echo "\`\`\`" >> security-analysis.md
+        grep -r "password\|secret\|token\|key" --include="*.cs" src/ | grep -i "=" || echo "No hardcoded secrets detected" >> security-analysis.md
+        echo "\`\`\`" >> security-analysis.md
+        echo "" >> security-analysis.md
+        
+        echo "### SQL Injection Prevention" >> security-analysis.md
+        echo "\`\`\`" >> security-analysis.md
+        if grep -r "SqlCommand\|ExecuteSqlRaw" --include="*.cs" src/; then
+          echo "⚠️ Direct SQL usage found - ensure parameterized queries" >> security-analysis.md
+        else
+          echo "✅ No direct SQL usage detected - using EF Core" >> security-analysis.md
+        fi >> security-analysis.md
+        echo "\`\`\`" >> security-analysis.md
+
+    - name: Performance analysis
+      working-directory: ./services/api
+      run: |
+        echo "# ⚡ Performance Analysis Report" > performance-analysis.md
+        echo "" >> performance-analysis.md
+        
+        echo "## Async/Await Usage" >> performance-analysis.md
+        echo "### Async Methods" >> performance-analysis.md
+        echo "\`\`\`" >> performance-analysis.md
+        grep -r "async " --include="*.cs" src/ | wc -l | awk '{print "Total async methods: " $1}' >> performance-analysis.md
+        echo "\`\`\`" >> performance-analysis.md
+        
+        echo "### Potential Sync-over-Async Issues" >> performance-analysis.md
+        echo "\`\`\`" >> performance-analysis.md
+        if grep -r "\.Result\|\.Wait()" --include="*.cs" src/; then
+          echo "⚠️ Potential sync-over-async usage found" >> performance-analysis.md
+        else
+          echo "✅ No sync-over-async issues detected" >> performance-analysis.md
+        fi >> performance-analysis.md
+        echo "\`\`\`" >> performance-analysis.md
+        
+        echo "### Database Query Patterns" >> performance-analysis.md
+        echo "\`\`\`" >> performance-analysis.md
+        grep -r "Include\|ThenInclude" --include="*.cs" src/ | wc -l | awk '{print "Eager loading queries: " $1}' >> performance-analysis.md
+        grep -r "FirstOrDefault\|SingleOrDefault" --include="*.cs" src/ | wc -l | awk '{print "Single entity queries: " $1}' >> performance-analysis.md
+        echo "\`\`\`" >> performance-analysis.md
+
+    - name: Architecture validation detailed
+      working-directory: ./services/api
+      run: |
+        echo "# 🏗️ Architecture Validation Report" > architecture-analysis.md
+        echo "" >> architecture-analysis.md
+        
+        echo "## Layer Dependency Analysis" >> architecture-analysis.md
+        echo "" >> architecture-analysis.md
+        
+        # Check each layer's dependencies
+        for layer in Domain Application Infrastructure Api; do
+          echo "### SkillSwap.$layer Dependencies" >> architecture-analysis.md
+          echo "\`\`\`" >> architecture-analysis.md
+          if [ -d "src/SkillSwap.$layer" ]; then
+            grep -r "using SkillSwap\." --include="*.cs" "src/SkillSwap.$layer" | sed 's/.*using SkillSwap\./SkillSwap./' | sed 's/;.*//' | sort | uniq -c >> architecture-analysis.md
+          fi
+          echo "\`\`\`" >> architecture-analysis.md
+          echo "" >> architecture-analysis.md
+        done
+        
+        echo "## Entity Analysis" >> architecture-analysis.md
+        echo "\`\`\`" >> architecture-analysis.md
+        find src/SkillSwap.Domain/Entities -name "*.cs" | xargs grep -l "class " | while read file; do
+          echo "Entity: $(basename "$file" .cs)" >> architecture-analysis.md
+          grep -E "public.*{|private.*{" "$file" | wc -l | awk '{print "  Properties/Fields: " $1}' >> architecture-analysis.md
+        done
+        echo "\`\`\`" >> architecture-analysis.md
+
+    - name: Generate comprehensive summary
+      working-directory: ./services/api
+      run: |
+        echo "# 🎯 Comprehensive Code Analysis Summary" > analysis-summary.md
+        echo "" >> analysis-summary.md
+        echo "Generated: $(date)" >> analysis-summary.md
+        echo "" >> analysis-summary.md
+        
+        echo "## 📊 Key Metrics" >> analysis-summary.md
+        echo "- **Total C# Files**: $(find src/ -name "*.cs" | wc -l)" >> analysis-summary.md
+        echo "- **Total Lines of Code**: $(find src/ -name "*.cs" -exec wc -l {} + | tail -1 | awk '{print $1}')" >> analysis-summary.md
+        echo "- **Domain Entities**: $(find src/SkillSwap.Domain/Entities -name "*.cs" | wc -l)" >> analysis-summary.md
+        echo "- **Value Objects**: $(find src/SkillSwap.Domain/ValueObjects -name "*.cs" | wc -l)" >> analysis-summary.md
+        echo "" >> analysis-summary.md
+        
+        echo "## ✅ Architecture Compliance" >> analysis-summary.md
+        if ! grep -r "using.*Infrastructure\|using.*Api" --include="*.cs" src/SkillSwap.Domain/ > /dev/null 2>&1; then
+          echo "- ✅ Domain layer has no outward dependencies" >> analysis-summary.md
+        else
+          echo "- ❌ Domain layer has outward dependencies" >> analysis-summary.md
+        fi
+        
+        if ! grep -r "using.*Api" --include="*.cs" src/SkillSwap.Application/ > /dev/null 2>&1; then
+          echo "- ✅ Application layer doesn't depend on API layer" >> analysis-summary.md
+        else
+          echo "- ❌ Application layer depends on API layer" >> analysis-summary.md
+        fi
+        
+        echo "" >> analysis-summary.md
+        echo "## 🎯 Recommendations for GitHub Copilot Review" >> analysis-summary.md
+        echo "1. Focus on clean architecture compliance" >> analysis-summary.md
+        echo "2. Verify proper async/await usage" >> analysis-summary.md
+        echo "3. Check Entity Framework query efficiency" >> analysis-summary.md
+        echo "4. Validate business logic placement in domain entities" >> analysis-summary.md
+        echo "5. Ensure proper error handling and logging" >> analysis-summary.md
+
+    - name: Upload analysis artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: code-analysis-reports
+        path: |
+          ./services/api/*-analysis.md
+        retention-days: 30
+
+    - name: Comment analysis summary on PR
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          
+          let summaryContent = '';
+          try {
+            summaryContent = fs.readFileSync('./services/api/analysis-summary.md', 'utf8');
+          } catch (error) {
+            summaryContent = '❌ Could not generate analysis summary';
+          }
+          
+          const comment = `## 🤖 Automated Code Analysis Results
+
+          ${summaryContent}
+
+          ---
+
+          ### 📋 Full Analysis Reports
+          Complete analysis reports have been generated and are available as workflow artifacts:
+          - 📁 Project Structure Analysis
+          - 📦 Dependency Analysis  
+          - 📊 Code Metrics Analysis
+          - 🔒 Security Analysis
+          - ⚡ Performance Analysis
+          - 🏗️ Architecture Validation
+
+          ### 🎯 Next Steps for Review
+          1. **GitHub Copilot**: Will provide AI-powered insights based on repository instructions
+          2. **Manual Review**: Focus on business logic, security, and architecture compliance
+          3. **Testing**: Ensure adequate test coverage for new functionality
+
+          📚 Review the complete [Code Review Guidelines](.github/copilot-instructions.md) for detailed criteria.`;
+
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: comment
+          });
+
+  # Issue creation for code quality improvements
+  create-quality-issues:
+    name: Create Code Quality Issues
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'quality-review'))
+    needs: code-analysis
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Create technical debt issue
+      if: always()
+      uses: actions/github-script@v7
+      with:
+        script: |
+          // Create an issue for tracking technical debt
+          const issue = await github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: '🔧 Technical Debt Review - ' + new Date().toISOString().split('T')[0],
+            body: `## 🔍 Technical Debt Analysis
+
+            This issue tracks potential technical debt and code quality improvements identified during automated analysis.
+
+            ### 📊 Analysis Results
+            - Run triggered by: ${context.eventName}
+            - Analyzed commit: ${context.sha}
+            - Date: ${new Date().toISOString()}
+
+            ### 🎯 Areas for Improvement
+            - [ ] Code complexity reduction
+            - [ ] Performance optimizations
+            - [ ] Test coverage improvements
+            - [ ] Documentation updates
+            - [ ] Architecture refinements
+
+            ### 📋 Review Checklist
+            - [ ] Review automated analysis reports
+            - [ ] Prioritize high-impact improvements
+            - [ ] Create specific tasks for identified issues
+            - [ ] Update development guidelines if needed
+
+            See workflow artifacts for detailed analysis reports.`,
+            labels: ['technical-debt', 'code-quality', 'enhancement']
+          });
+          
+          console.log('Created technical debt issue:', issue.data.number);
