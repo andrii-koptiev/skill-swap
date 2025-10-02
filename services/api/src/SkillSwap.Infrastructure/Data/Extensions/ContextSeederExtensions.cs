@@ -11,12 +11,52 @@ using SkillSwap.Infrastructure.Data.Seeders;
 namespace SkillSwap.Infrastructure.Data.Extensions;
 
 /// <summary>
-/// Database context seeding extensions for development environment
+/// Database context seeding extensions for all environments
 /// </summary>
 public static class ContextSeederExtensions
 {
     /// <summary>
-    /// Seeds the database with development data
+    /// Seeds the database with essential data required for all environments
+    /// (roles, permissions, skill categories)
+    /// </summary>
+    public static async Task SeedEssentialDataAsync(
+        this IServiceProvider serviceProvider,
+        ILogger logger
+    )
+    {
+        using var scope = serviceProvider.CreateScope();
+        var context = scope.ServiceProvider.GetRequiredService<SkillSwapDbContext>();
+
+        try
+        {
+            logger.LogInformation("Starting essential data seeding for all environments...");
+
+            // Ensure database is created
+            await context.Database.EnsureCreatedAsync();
+
+            // Seed system data (roles and permissions) - required for all environments
+            await SeedSystemDataAsync(context, logger);
+
+            // Seed skill categories - required for all environments
+            await SeedSkillCategoriesAsync(context, logger);
+
+            logger.LogInformation("Essential data seeding completed successfully");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(
+                ex,
+                "An error occurred while seeding essential data. Seeding failed and will need to be retried"
+            );
+            throw new InvalidOperationException(
+                "Essential data seeding failed during initialization",
+                ex
+            );
+        }
+    }
+
+    /// <summary>
+    /// Seeds the database with development-only data (users, skills, associations)
     /// </summary>
     public static async Task SeedDevelopmentDataAsync(
         this IServiceProvider serviceProvider,
@@ -25,38 +65,24 @@ public static class ContextSeederExtensions
     {
         using var scope = serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<SkillSwapDbContext>();
-        var environment = scope.ServiceProvider.GetRequiredService<IHostEnvironment>();
-
-        // Only seed in development environment
-        if (!environment.IsDevelopment())
-        {
-            logger.LogInformation("Skipping data seeding - not in development environment");
-            return;
-        }
 
         try
         {
-            logger.LogInformation("Starting database seeding for development environment...");
+            logger.LogInformation("Starting development-only data seeding...");
 
-            // Ensure database is created
-            await context.Database.EnsureCreatedAsync();
-
-            // Seed system data (roles and permissions)
-            await SeedSystemDataAsync(context, logger);
-
-            // Seed skills data
+            // Seed skills data (development only)
             await SeedSkillsDataAsync(context, logger);
 
-            // Seed development data (test users)
+            // Seed development users (development only)
             await SeedDevelopmentUsersAsync(context, logger);
 
-            // Assign roles to users (always run to ensure roles are assigned)
+            // Assign roles to users (development only)
             await AssignRolesToUsersAsync(context, logger);
 
-            // Seed user skills associations
+            // Seed user skills associations (development only)
             await SeedUserSkillsAsync(context, logger);
 
-            logger.LogInformation("Database seeding completed successfully");
+            logger.LogInformation("Development data seeding completed successfully");
         }
         catch (Exception ex)
         {
@@ -281,18 +307,35 @@ public static class ContextSeederExtensions
     /// <summary>
     /// Seeds skills data for the platform
     /// </summary>
+    /// <summary>
+    /// Seeds skill categories for all environments
+    /// </summary>
+    private static async Task SeedSkillCategoriesAsync(SkillSwapDbContext context, ILogger logger)
+    {
+        logger.LogInformation("Seeding skill categories...");
+
+        // Seed skill categories - required for all environments
+        await SkillCategorySeed.SeedSkillCategoriesAsync(context);
+
+        await context.SaveChangesAsync();
+        logger.LogInformation("Skill categories seeded successfully");
+    }
+
+    /// <summary>
+    /// Seeds skills data for development environment only
+    /// </summary>
     private static async Task SeedSkillsDataAsync(SkillSwapDbContext context, ILogger logger)
     {
         logger.LogInformation("Seeding skills data...");
 
-        // Seed skill categories first
+        // Ensure skill categories are seeded first
         await SkillCategorySeed.SeedSkillCategoriesAsync(context);
 
-        // Seed skills using new table structure
+        // Seed skills using new table structure (development only)
         await SkillSeed.SeedSkillsAsync(context);
 
         await context.SaveChangesAsync();
-        logger.LogInformation("Skills and skill categories seeded successfully");
+        logger.LogInformation("Skills seeded successfully");
     }
 
     /// <summary>

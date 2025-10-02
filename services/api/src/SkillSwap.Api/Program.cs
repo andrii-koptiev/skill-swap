@@ -28,9 +28,22 @@ if (app.Environment.IsDevelopment())
         await context.Database.MigrateAsync();
         logger.LogInformation("Database migrations applied successfully");
 
-        // Seed development data
-        await app.Services.SeedDevelopmentDataAsync(logger);
-        logger.LogInformation("Development data seeding completed");
+        // Seed essential data (all environments)
+        await app.Services.SeedEssentialDataAsync(logger);
+        logger.LogInformation("Essential data seeding completed");
+
+        // Seed development data (dev only)
+        if (app.Environment.IsDevelopment())
+        {
+            await app.Services.SeedDevelopmentDataAsync(logger);
+            logger.LogInformation("Development data seeding completed");
+        }
+        else
+        {
+            logger.LogInformation(
+                "Skipping development data seeding - not in development environment"
+            );
+        }
     }
     catch (Exception ex)
     {
