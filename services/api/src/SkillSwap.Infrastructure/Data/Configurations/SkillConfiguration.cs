@@ -27,14 +27,15 @@ public class SkillConfiguration : IEntityTypeConfiguration<Skill>
         // Description configuration
         builder.Property(s => s.Description).HasColumnName("description").HasMaxLength(500);
 
-        // Category ID configuration (stored as UUID)
-        builder
-            .Property(s => s.CategoryId)
-            .HasColumnName("category_id")
-            .IsRequired();
+        // Category ID configuration (foreign key to skill_categories)
+        builder.Property(s => s.CategoryId).HasColumnName("category_id").IsRequired();
 
-        // Category computed property (ignore in mapping)
-        builder.Ignore(s => s.Category);
+        // Configure foreign key relationship
+        builder
+            .HasOne(s => s.Category)
+            .WithMany(sc => sc.Skills)
+            .HasForeignKey(s => s.CategoryId)
+            .OnDelete(DeleteBehavior.Restrict);
 
         // IsActive configuration
         builder.Property(s => s.IsActive).HasColumnName("is_active").HasDefaultValue(true);

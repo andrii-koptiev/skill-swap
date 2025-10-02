@@ -1,5 +1,4 @@
 using SkillSwap.Domain.Common;
-using SkillSwap.Domain.Enums;
 
 namespace SkillSwap.Domain.Entities;
 
@@ -11,12 +10,12 @@ public partial class Skill : BaseEntity
     // Private parameterless constructor for EF Core
     private Skill() { }
 
-    public Skill(string name, string description, SkillCategory category)
+    public Skill(string name, string description, Guid categoryId)
     {
         Name = ValidateName(name);
         Slug = GenerateSlug(name);
         Description = description?.Trim();
-        CategoryId = GetCategoryId(category);
+        CategoryId = categoryId;
         IsActive = true;
     }
 
@@ -36,14 +35,14 @@ public partial class Skill : BaseEntity
     public string? Description { get; private set; }
 
     /// <summary>
-    /// Category ID for database storage
+    /// Category ID for foreign key relationship
     /// </summary>
     public Guid CategoryId { get; private set; }
 
     /// <summary>
-    /// Computed category property derived from CategoryId
+    /// Navigation property to the skill category
     /// </summary>
-    public SkillCategory Category => GetCategoryFromId(CategoryId);
+    public virtual SkillCategory Category { get; private set; } = null!;
 
     /// <summary>
     /// Whether the skill is active and available for use
@@ -64,9 +63,9 @@ public partial class Skill : BaseEntity
     /// <summary>
     /// Changes the skill category
     /// </summary>
-    public void ChangeCategory(SkillCategory category)
+    public void ChangeCategory(Guid categoryId)
     {
-        CategoryId = GetCategoryId(category);
+        CategoryId = categoryId;
         UpdateTimestamp();
     }
 
@@ -126,59 +125,6 @@ public partial class Skill : BaseEntity
         slug = slug.Trim('-');
 
         return slug;
-    }
-
-    /// <summary>
-    /// Converts SkillCategory enum to a fixed GUID for database storage
-    /// </summary>
-    private static Guid GetCategoryId(SkillCategory category)
-    {
-        // Create deterministic GUIDs for each category
-        return category switch
-        {
-            SkillCategory.Technology => new Guid("11111111-1111-1111-1111-111111111111"),
-            SkillCategory.Creative => new Guid("22222222-2222-2222-2222-222222222222"),
-            SkillCategory.Business => new Guid("33333333-3333-3333-3333-333333333333"),
-            SkillCategory.Language => new Guid("44444444-4444-4444-4444-444444444444"),
-            SkillCategory.Health => new Guid("55555555-5555-5555-5555-555555555555"),
-            SkillCategory.Culinary => new Guid("66666666-6666-6666-6666-666666666666"),
-            SkillCategory.Crafts => new Guid("77777777-7777-7777-7777-777777777777"),
-            SkillCategory.Education => new Guid("88888888-8888-8888-8888-888888888888"),
-            SkillCategory.Music => new Guid("99999999-9999-9999-9999-999999999999"),
-            SkillCategory.Sports => new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
-            SkillCategory.Science => new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
-            SkillCategory.Other => new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"),
-            _ => throw new ArgumentException(
-                $"Unknown skill category: {category}",
-                nameof(category)
-            ),
-        };
-    }
-
-    /// <summary>
-    /// Converts GUID back to SkillCategory enum
-    /// </summary>
-    private static SkillCategory GetCategoryFromId(Guid categoryId)
-    {
-        return categoryId.ToString().ToLowerInvariant() switch
-        {
-            "11111111-1111-1111-1111-111111111111" => SkillCategory.Technology,
-            "22222222-2222-2222-2222-222222222222" => SkillCategory.Creative,
-            "33333333-3333-3333-3333-333333333333" => SkillCategory.Business,
-            "44444444-4444-4444-4444-444444444444" => SkillCategory.Language,
-            "55555555-5555-5555-5555-555555555555" => SkillCategory.Health,
-            "66666666-6666-6666-6666-666666666666" => SkillCategory.Culinary,
-            "77777777-7777-7777-7777-777777777777" => SkillCategory.Crafts,
-            "88888888-8888-8888-8888-888888888888" => SkillCategory.Education,
-            "99999999-9999-9999-9999-999999999999" => SkillCategory.Music,
-            "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" => SkillCategory.Sports,
-            "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb" => SkillCategory.Science,
-            "cccccccc-cccc-cccc-cccc-cccccccccccc" => SkillCategory.Other,
-            _ => throw new ArgumentException(
-                $"Unknown category ID: {categoryId}",
-                nameof(categoryId)
-            ),
-        };
     }
 
     [System.Text.RegularExpressions.GeneratedRegex(@"[^a-z0-9\-]")]

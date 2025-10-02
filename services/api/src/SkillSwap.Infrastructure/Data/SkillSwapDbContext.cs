@@ -26,6 +26,7 @@ public class SkillSwapDbContext : DbContext
 
     // Skill-related entities
     public DbSet<Skill> Skills { get; set; } = null!;
+    public DbSet<SkillCategory> SkillCategories { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -39,6 +40,7 @@ public class SkillSwapDbContext : DbContext
         modelBuilder.ApplyConfiguration(new RoleConfiguration());
         modelBuilder.ApplyConfiguration(new UserRoleConfiguration());
         modelBuilder.ApplyConfiguration(new RolePermissionConfiguration());
+        modelBuilder.ApplyConfiguration(new SkillCategoryConfiguration());
         modelBuilder.ApplyConfiguration(new SkillConfiguration());
 
         // Global configurations

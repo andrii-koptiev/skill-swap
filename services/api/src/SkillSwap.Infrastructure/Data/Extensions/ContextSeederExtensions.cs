@@ -6,6 +6,7 @@ using SkillSwap.Domain.Entities;
 using SkillSwap.Domain.Enums;
 using SkillSwap.Domain.ValueObjects;
 using SkillSwap.Infrastructure.Data.Seed;
+using SkillSwap.Infrastructure.Data.Seeders;
 
 namespace SkillSwap.Infrastructure.Data.Extensions;
 
@@ -284,11 +285,14 @@ public static class ContextSeederExtensions
     {
         logger.LogInformation("Seeding skills data...");
 
-        // Seed skills
+        // Seed skill categories first
+        await SkillCategorySeed.SeedSkillCategoriesAsync(context);
+
+        // Seed skills using new table structure
         await SkillSeed.SeedSkillsAsync(context);
 
         await context.SaveChangesAsync();
-        logger.LogInformation("Skills seeded successfully");
+        logger.LogInformation("Skills and skill categories seeded successfully");
     }
 
     /// <summary>
