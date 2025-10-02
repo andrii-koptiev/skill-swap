@@ -2,15 +2,15 @@ name: Code Quality & Review
 
 on:
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
     paths:
-      - 'services/api/**'
-      - '.github/workflows/**'
-  
+      - "services/api/**"
+      - ".github/workflows/**"
+
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
     paths:
-      - 'services/api/**'
+      - "services/api/**"
 
 permissions:
   contents: read
@@ -22,7 +22,7 @@ jobs:
   build-and-test:
     name: Build & Test
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
         image: postgres:16
@@ -39,129 +39,129 @@ jobs:
           - 5432:5432
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '8.0.x'
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
 
-    - name: Cache NuGet packages
-      uses: actions/cache@v4
-      with:
-        path: ~/.nuget/packages
-        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
-        restore-keys: |
-          ${{ runner.os }}-nuget-
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
 
-    - name: Restore dependencies
-      working-directory: ./services/api
-      run: dotnet restore SkillSwap.sln
+      - name: Restore dependencies
+        working-directory: ./services/api
+        run: dotnet restore SkillSwap.sln
 
-    - name: Build solution
-      working-directory: ./services/api
-      run: |
-        dotnet build SkillSwap.sln \
-          --configuration Release \
-          --no-restore \
-          --verbosity minimal \
-          /p:TreatWarningsAsErrors=true
+      - name: Build solution
+        working-directory: ./services/api
+        run: |
+          dotnet build SkillSwap.sln \
+            --configuration Release \
+            --no-restore \
+            --verbosity minimal \
+            /p:TreatWarningsAsErrors=true
 
-    - name: Run unit tests
-      working-directory: ./services/api
-      run: |
-        dotnet test SkillSwap.sln \
-          --configuration Release \
-          --no-build \
-          --verbosity minimal \
-          --collect:"XPlat Code Coverage" \
-          --results-directory ./TestResults/ \
-          --logger "trx;LogFileName=test-results.trx"
+      - name: Run unit tests
+        working-directory: ./services/api
+        run: |
+          dotnet test SkillSwap.sln \
+            --configuration Release \
+            --no-build \
+            --verbosity minimal \
+            --collect:"XPlat Code Coverage" \
+            --results-directory ./TestResults/ \
+            --logger "trx;LogFileName=test-results.trx"
 
-    - name: Upload test results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: test-results
-        path: ./services/api/TestResults/
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results
+          path: ./services/api/TestResults/
 
-    - name: Generate code coverage report
-      if: always()
-      run: |
-        dotnet tool install --global dotnet-reportgenerator-globaltool
-        reportgenerator \
-          -reports:"./services/api/TestResults/**/coverage.cobertura.xml" \
-          -targetdir:"./services/api/TestResults/coverage" \
-          -reporttypes:"Html;Cobertura;JsonSummary"
+      - name: Generate code coverage report
+        if: always()
+        run: |
+          dotnet tool install --global dotnet-reportgenerator-globaltool
+          reportgenerator \
+            -reports:"./services/api/TestResults/**/coverage.cobertura.xml" \
+            -targetdir:"./services/api/TestResults/coverage" \
+            -reporttypes:"Html;Cobertura;JsonSummary"
 
-    - name: Upload coverage reports
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: coverage-report
-        path: ./services/api/TestResults/coverage/
+      - name: Upload coverage reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: ./services/api/TestResults/coverage/
 
-    - name: Comment PR with test results
-      if: github.event_name == 'pull_request' && always()
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const fs = require('fs');
-          const path = require('path');
-          
-          // Read coverage summary if available
-          let coverageComment = '';
-          try {
-            const summaryPath = './services/api/TestResults/coverage/Summary.json';
-            if (fs.existsSync(summaryPath)) {
-              const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
-              const lineCoverage = summary.summary.linecoverage;
-              coverageComment = `\n📊 **Code Coverage**: ${lineCoverage}%`;
-              
-              if (lineCoverage < 80) {
-                coverageComment += ' ⚠️ Below recommended 80% threshold';
-              } else {
-                coverageComment += ' ✅ Meets coverage requirements';
+      - name: Comment PR with test results
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            // Read coverage summary if available
+            let coverageComment = '';
+            try {
+              const summaryPath = './services/api/TestResults/coverage/Summary.json';
+              if (fs.existsSync(summaryPath)) {
+                const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+                const lineCoverage = summary.summary.linecoverage;
+                coverageComment = `\n📊 **Code Coverage**: ${lineCoverage}%`;
+                
+                if (lineCoverage < 80) {
+                  coverageComment += ' ⚠️ Below recommended 80% threshold';
+                } else {
+                  coverageComment += ' ✅ Meets coverage requirements';
+                }
               }
+            } catch (error) {
+              console.log('Could not read coverage summary:', error.message);
             }
-          } catch (error) {
-            console.log('Could not read coverage summary:', error.message);
-          }
 
-          const comment = `## 🔍 Code Quality Review Results
+            const comment = `## 🔍 Code Quality Review Results
 
-          ### Build Status
-          - ✅ **Build**: Successful
-          - ✅ **Tests**: All tests passed${coverageComment}
+            ### Build Status
+            - ✅ **Build**: Successful
+            - ✅ **Tests**: All tests passed${coverageComment}
 
-          ### 🎯 Review Guidelines
-          This PR has been automatically analyzed. Please ensure:
+            ### 🎯 Review Guidelines
+            This PR has been automatically analyzed. Please ensure:
 
-          1. **Architecture Compliance**: Code follows clean architecture principles
-          2. **Security**: All endpoints have proper authentication/authorization  
-          3. **Performance**: Database queries are optimized
-          4. **Business Logic**: Domain rules are properly implemented
-          5. **Error Handling**: Comprehensive error handling and logging
+            1. **Architecture Compliance**: Code follows clean architecture principles
+            2. **Security**: All endpoints have proper authentication/authorization  
+            3. **Performance**: Database queries are optimized
+            4. **Business Logic**: Domain rules are properly implemented
+            5. **Error Handling**: Comprehensive error handling and logging
 
-          📚 See [Repository Instructions](.github/copilot-instructions.md) for detailed review criteria.
+            📚 See [Repository Instructions](.github/copilot-instructions.md) for detailed review criteria.
 
-          ### 🤖 AI Code Review
-          GitHub Copilot will provide additional insights on code quality, security, and best practices.`;
+            ### 🤖 AI Code Review
+            GitHub Copilot will provide additional insights on code quality, security, and best practices.`;
 
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: comment
-          });
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
 
   # Database migration validation
   database-validation:
     name: Database Migration Validation
     runs-on: ubuntu-latest
     if: contains(github.event.pull_request.changed_files, 'Migrations/') || contains(github.event.pull_request.title, 'migration')
-    
+
     services:
       postgres:
         image: postgres:16
@@ -178,218 +178,218 @@ jobs:
           - 5432:5432
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0  # Need full history for migration validation
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Need full history for migration validation
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '8.0.x'
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
 
-    - name: Restore dependencies
-      working-directory: ./services/api
-      run: dotnet restore SkillSwap.sln
+      - name: Restore dependencies
+        working-directory: ./services/api
+        run: dotnet restore SkillSwap.sln
 
-    - name: Test database migration
-      working-directory: ./services/api/src/SkillSwap.Infrastructure
-      env:
-        ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=skillswap_migration_test;Username=skillswap_user;Password=skillswap_password"
-      run: |
-        # Apply migrations
-        dotnet ef database update --startup-project ../SkillSwap.Api
-        
-        # Validate schema
-        echo "✅ Migration applied successfully"
-        
-        # Test rollback (optional - only for new migrations)
-        echo "Testing migration rollback capability..."
+      - name: Test database migration
+        working-directory: ./services/api/src/SkillSwap.Infrastructure
+        env:
+          ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=skillswap_migration_test;Username=skillswap_user;Password=skillswap_password"
+        run: |
+          # Apply migrations
+          dotnet ef database update --startup-project ../SkillSwap.Api
 
-    - name: Comment on PR with migration results
-      if: always()
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const comment = `## 🗄️ Database Migration Validation
+          # Validate schema
+          echo "✅ Migration applied successfully"
 
-          ### Migration Status
-          - ✅ **Migration Applied**: Successfully applied to clean database
-          - ✅ **Schema Validation**: Database schema is valid
-          - ✅ **Rollback Test**: Migration can be safely reverted
+          # Test rollback (optional - only for new migrations)
+          echo "Testing migration rollback capability..."
 
-          ### ⚠️ Migration Review Checklist
-          Please ensure:
-          - [ ] Migration has proper up/down scripts
-          - [ ] No breaking changes to existing data
-          - [ ] Proper foreign key constraints
-          - [ ] Performance indexes for new columns
-          - [ ] Seed data updated if needed
+      - name: Comment on PR with migration results
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comment = `## 🗄️ Database Migration Validation
 
-          📋 See the [PR template](.github/pull_request_template.md) for complete database review checklist.`;
+            ### Migration Status
+            - ✅ **Migration Applied**: Successfully applied to clean database
+            - ✅ **Schema Validation**: Database schema is valid
+            - ✅ **Rollback Test**: Migration can be safely reverted
 
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: comment
-          });
+            ### ⚠️ Migration Review Checklist
+            Please ensure:
+            - [ ] Migration has proper up/down scripts
+            - [ ] No breaking changes to existing data
+            - [ ] Proper foreign key constraints
+            - [ ] Performance indexes for new columns
+            - [ ] Seed data updated if needed
+
+            📋 See the [PR template](.github/pull_request_template.md) for complete database review checklist.`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
 
   # Security scan
   security-scan:
     name: Security Analysis
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '8.0.x'
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
 
-    - name: Install security scanner
-      run: |
-        dotnet tool install --global security-scan
+      - name: Install security scanner
+        run: |
+          dotnet tool install --global security-scan
 
-    - name: Run security analysis
-      working-directory: ./services/api
-      run: |
-        # Run security analysis on the codebase
-        echo "🔍 Running security analysis..."
-        
-        # Check for common security issues
-        echo "Checking for hardcoded secrets..."
-        if grep -r "password\|secret\|key" --include="*.cs" --include="*.json" src/ | grep -v "Password" | grep -v "PasswordHash"; then
-          echo "⚠️ Potential hardcoded secrets found"
-          exit 1
-        fi
-        
-        echo "✅ Basic security checks passed"
+      - name: Run security analysis
+        working-directory: ./services/api
+        run: |
+          # Run security analysis on the codebase
+          echo "🔍 Running security analysis..."
 
-    - name: Dependency vulnerability scan
-      working-directory: ./services/api
-      run: |
-        # Check for vulnerable NuGet packages
-        dotnet list package --vulnerable --include-transitive || true
-        
-        # Check for deprecated packages
-        dotnet list package --deprecated || true
+          # Check for common security issues
+          echo "Checking for hardcoded secrets..."
+          if grep -r "password\|secret\|key" --include="*.cs" --include="*.json" src/ | grep -v "Password" | grep -v "PasswordHash"; then
+            echo "⚠️ Potential hardcoded secrets found"
+            exit 1
+          fi
 
-    - name: Comment security results
-      if: github.event_name == 'pull_request'
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const comment = `## 🔒 Security Analysis Results
+          echo "✅ Basic security checks passed"
 
-          ### Security Checks
-          - ✅ **Hardcoded Secrets**: No hardcoded credentials detected
-          - ✅ **Dependency Scan**: No known vulnerable dependencies
-          - ✅ **Code Analysis**: Passed basic security checks
+      - name: Dependency vulnerability scan
+        working-directory: ./services/api
+        run: |
+          # Check for vulnerable NuGet packages
+          dotnet list package --vulnerable --include-transitive || true
 
-          ### 🛡️ Security Review Reminders
-          Please verify:
-          - [ ] All endpoints require proper authentication
-          - [ ] Input validation on all user inputs
-          - [ ] SQL injection prevention (EF Core parameterized queries)
-          - [ ] Sensitive data is properly protected
-          - [ ] Error messages don't leak sensitive information
+          # Check for deprecated packages
+          dotnet list package --deprecated || true
 
-          🔍 Manual security review is still required for business logic and authorization flows.`;
+      - name: Comment security results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comment = `## 🔒 Security Analysis Results
 
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: comment
-          });
+            ### Security Checks
+            - ✅ **Hardcoded Secrets**: No hardcoded credentials detected
+            - ✅ **Dependency Scan**: No known vulnerable dependencies
+            - ✅ **Code Analysis**: Passed basic security checks
+
+            ### 🛡️ Security Review Reminders
+            Please verify:
+            - [ ] All endpoints require proper authentication
+            - [ ] Input validation on all user inputs
+            - [ ] SQL injection prevention (EF Core parameterized queries)
+            - [ ] Sensitive data is properly protected
+            - [ ] Error messages don't leak sensitive information
+
+            🔍 Manual security review is still required for business logic and authorization flows.`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
 
   # Code quality analysis
   code-quality:
     name: Code Quality Analysis
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '8.0.x'
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
 
-    - name: Restore dependencies
-      working-directory: ./services/api
-      run: dotnet restore SkillSwap.sln
+      - name: Restore dependencies
+        working-directory: ./services/api
+        run: dotnet restore SkillSwap.sln
 
-    - name: Code quality analysis
-      working-directory: ./services/api
-      run: |
-        echo "🔍 Running code quality analysis..."
-        
-        # Check for TODO/HACK/FIXME comments
-        echo "Checking for technical debt markers..."
-        if grep -r "TODO\|HACK\|FIXME" --include="*.cs" src/; then
-          echo "📝 Technical debt markers found - please review"
-        fi
-        
-        # Check naming conventions
-        echo "Checking basic naming conventions..."
-        if grep -r "class [a-z]" --include="*.cs" src/; then
-          echo "⚠️ Potential naming convention violations found"
-        fi
-        
-        echo "✅ Code quality analysis completed"
+      - name: Code quality analysis
+        working-directory: ./services/api
+        run: |
+          echo "🔍 Running code quality analysis..."
 
-    - name: Architecture validation
-      working-directory: ./services/api/src
-      run: |
-        echo "🏗️ Validating clean architecture..."
-        
-        # Check for potential architecture violations
-        echo "Checking domain layer purity..."
-        if grep -r "using.*Infrastructure\|using.*Api" --include="*.cs" SkillSwap.Domain/; then
-          echo "❌ Domain layer has dependencies on outer layers"
-          exit 1
-        fi
-        
-        echo "Checking application layer dependencies..."
-        if grep -r "using.*Api" --include="*.cs" SkillSwap.Application/; then
-          echo "❌ Application layer depends on API layer"
-          exit 1
-        fi
-        
-        echo "✅ Architecture validation passed"
+          # Check for TODO/HACK/FIXME comments
+          echo "Checking for technical debt markers..."
+          if grep -r "TODO\|HACK\|FIXME" --include="*.cs" src/; then
+            echo "📝 Technical debt markers found - please review"
+          fi
 
-    - name: Comment quality results
-      if: github.event_name == 'pull_request'
-      uses: actions/github-script@v7
-      with:
-        script: |
-          const comment = `## 📊 Code Quality Analysis
+          # Check naming conventions
+          echo "Checking basic naming conventions..."
+          if grep -r "class [a-z]" --include="*.cs" src/; then
+            echo "⚠️ Potential naming convention violations found"
+          fi
 
-          ### Quality Metrics
-          - ✅ **Architecture**: Clean architecture boundaries respected
-          - ✅ **Naming Conventions**: C# naming conventions followed
-          - ✅ **Code Organization**: Proper file and namespace organization
+          echo "✅ Code quality analysis completed"
 
-          ### 🎯 Review Focus Areas
-          GitHub Copilot should focus on:
-          1. **Domain Logic**: Ensure business logic is in domain entities
-          2. **Error Handling**: Comprehensive error handling and logging
-          3. **Performance**: Database query optimization
-          4. **Testability**: Code is properly structured for testing
-          5. **Maintainability**: Long-term code maintainability
+      - name: Architecture validation
+        working-directory: ./services/api/src
+        run: |
+          echo "🏗️ Validating clean architecture..."
 
-          📚 Full quality guidelines in [copilot-instructions.md](.github/copilot-instructions.md)`;
+          # Check for potential architecture violations
+          echo "Checking domain layer purity..."
+          if grep -r "using.*Infrastructure\|using.*Api" --include="*.cs" SkillSwap.Domain/; then
+            echo "❌ Domain layer has dependencies on outer layers"
+            exit 1
+          fi
 
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: comment
-          });
+          echo "Checking application layer dependencies..."
+          if grep -r "using.*Api" --include="*.cs" SkillSwap.Application/; then
+            echo "❌ Application layer depends on API layer"
+            exit 1
+          fi
+
+          echo "✅ Architecture validation passed"
+
+      - name: Comment quality results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const comment = `## 📊 Code Quality Analysis
+
+            ### Quality Metrics
+            - ✅ **Architecture**: Clean architecture boundaries respected
+            - ✅ **Naming Conventions**: C# naming conventions followed
+            - ✅ **Code Organization**: Proper file and namespace organization
+
+            ### 🎯 Review Focus Areas
+            GitHub Copilot should focus on:
+            1. **Domain Logic**: Ensure business logic is in domain entities
+            2. **Error Handling**: Comprehensive error handling and logging
+            3. **Performance**: Database query optimization
+            4. **Testability**: Code is properly structured for testing
+            5. **Maintainability**: Long-term code maintainability
+
+            📚 Full quality guidelines in [copilot-instructions.md](.github/copilot-instructions.md)`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });

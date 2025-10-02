@@ -13,20 +13,21 @@ This document defines the coding standards, conventions, and best practices for 
 #### Layer Responsibilities
 
 **Domain Layer** (`SkillSwap.Domain`)
+
 ```csharp
 // ✅ GOOD: Rich domain entity with business logic
 public class User : BaseEntity
 {
     private readonly List<UserSkill> _skills = new();
-    
+
     public IReadOnlyCollection<UserSkill> Skills => _skills.AsReadOnly();
-    
+
     public void AddSkill(Skill skill, SkillType skillType, ProficiencyLevel proficiency)
     {
         // Business rule validation
         if (_skills.Any(s => s.SkillId == skill.Id && s.SkillType == skillType))
             throw new DomainException("User already has this skill with the same type");
-            
+
         var userSkill = new UserSkill(Id, skill.Id, skillType, proficiency);
         _skills.Add(userSkill);
     }
@@ -41,6 +42,7 @@ public class User : BaseEntity
 ```
 
 **Application Layer** (`SkillSwap.Application`)
+
 ```csharp
 // ✅ GOOD: Application service orchestrating domain logic
 public class UserSkillService : IUserSkillService
@@ -59,7 +61,7 @@ public class UserSkillService : IUserSkillService
 
         // Domain logic in domain entity
         user.AddSkill(skill, request.SkillType, request.ProficiencyLevel);
-        
+
         await _unitOfWork.SaveChangesAsync();
         return Result.Success();
     }
@@ -67,6 +69,7 @@ public class UserSkillService : IUserSkillService
 ```
 
 #### Dependency Rules
+
 - **Domain**: No dependencies on other layers
 - **Application**: Can depend on Domain only
 - **Infrastructure**: Can depend on Domain and Application
@@ -79,6 +82,7 @@ public class UserSkillService : IUserSkillService
 ### C# Naming Standards
 
 #### Classes and Interfaces
+
 ```csharp
 // ✅ GOOD
 public class UserSkillService { }
@@ -92,6 +96,7 @@ public class skillSwapContext { }
 ```
 
 #### Methods and Properties
+
 ```csharp
 // ✅ GOOD
 public async Task<User> GetUserByIdAsync(Guid userId) { }
@@ -105,6 +110,7 @@ public bool isActive { get; private set; }
 ```
 
 #### Fields and Parameters
+
 ```csharp
 // ✅ GOOD
 private readonly IUserRepository _userRepository;
@@ -126,6 +132,7 @@ public async Task ProcessUser(Guid UserId, CancellationToken CancellationToken)
 ```
 
 #### Constants and Enums
+
 ```csharp
 // ✅ GOOD
 public const int MaxSkillsPerUser = 50;
@@ -157,6 +164,7 @@ public enum skillType  // Should be PascalCase
 ### Proper Async Patterns
 
 #### Method Signatures
+
 ```csharp
 // ✅ GOOD: Async methods with proper naming and return types
 public async Task<User> GetUserAsync(Guid id)
@@ -171,6 +179,7 @@ public async void UpdateUser(User user)              // Should return Task
 ```
 
 #### ConfigureAwait Usage
+
 ```csharp
 // ✅ GOOD: Use ConfigureAwait(false) in library code
 public async Task<User> GetUserAsync(Guid id)
@@ -189,6 +198,7 @@ public async Task<ActionResult<UserDto>> GetUser(Guid id)
 ```
 
 #### Async Enumerable
+
 ```csharp
 // ✅ GOOD: Use IAsyncEnumerable for streaming data
 public async IAsyncEnumerable<User> GetUsersAsync(
@@ -206,6 +216,7 @@ public async IAsyncEnumerable<User> GetUsersAsync(
 ## 🗄️ Entity Framework Best Practices
 
 ### Entity Configuration
+
 ```csharp
 // ✅ GOOD: Use Fluent API for entity configuration
 public class UserConfiguration : IEntityTypeConfiguration<User>
@@ -213,20 +224,20 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
     public void Configure(EntityTypeBuilder<User> builder)
     {
         builder.ToTable("users");
-        
+
         builder.HasKey(u => u.Id);
-        
+
         builder.Property(u => u.Email)
             .IsRequired()
             .HasMaxLength(255)
             .HasConversion(
                 email => email.Value,
                 value => Email.Create(value).Value);
-        
+
         builder.HasIndex(u => u.Email)
             .IsUnique()
             .HasDatabaseName("IX_users_email");
-            
+
         builder.HasMany(u => u.Skills)
             .WithOne()
             .HasForeignKey(us => us.UserId)
@@ -244,6 +255,7 @@ public class User : BaseEntity
 ```
 
 ### Query Patterns
+
 ```csharp
 // ✅ GOOD: Efficient queries with proper includes and filtering
 public async Task<User> GetUserWithSkillsAsync(Guid userId)
@@ -285,6 +297,7 @@ public async Task<List<UserDto>> GetAllUsersWithSkills()
 ```
 
 ### Repository Pattern
+
 ```csharp
 // ✅ GOOD: Repository with proper abstractions
 public interface IUserRepository : IRepository<User>
@@ -312,6 +325,7 @@ public class UserRepository : Repository<User>, IUserRepository
 ## 🛡️ Security Standards
 
 ### Input Validation
+
 ```csharp
 // ✅ GOOD: Proper input validation
 public class CreateUserRequest
@@ -349,6 +363,7 @@ public async Task<Result<User>> CreateUserAsync(CreateUserRequest request)
 ```
 
 ### Authentication & Authorization
+
 ```csharp
 // ✅ GOOD: Proper authorization attributes
 [Authorize]
@@ -372,6 +387,7 @@ public class UsersController : ControllerBase
 ```
 
 ### Sensitive Data Handling
+
 ```csharp
 // ✅ GOOD: Proper password handling
 public class User : BaseEntity
@@ -405,6 +421,7 @@ public class User : BaseEntity
 ## 🔬 Testing Standards
 
 ### Unit Testing
+
 ```csharp
 // ✅ GOOD: Well-structured unit test
 [Test]
@@ -421,7 +438,7 @@ public async Task CreateUserAsync_WithValidData_ShouldCreateUser()
 
     _userRepository.Setup(r => r.ExistsByEmailAsync(email.Value))
         .ReturnsAsync(false);
-    
+
     // Act
     var result = await _userService.CreateUserAsync(createRequest);
 
@@ -444,12 +461,13 @@ public void User_AddSkill_WithDuplicateSkill_ShouldThrowException()
     // Act & Assert
     var exception = Assert.Throws<DomainException>(
         () => user.AddSkill(skill, SkillType.CanTeach, ProficiencyLevel.Advanced));
-    
+
     exception.Message.Should().Contain("already has this skill");
 }
 ```
 
 ### Integration Testing
+
 ```csharp
 // ✅ GOOD: Integration test for API endpoint
 [Test]
@@ -457,10 +475,10 @@ public async Task GetUser_WithValidId_ShouldReturnUser()
 {
     // Arrange
     var user = await CreateTestUserAsync();
-    
+
     // Act
     var response = await _client.GetAsync($"/api/users/{user.Id}");
-    
+
     // Assert
     response.StatusCode.Should().Be(HttpStatusCode.OK);
     var userDto = await response.Content.ReadFromJsonAsync<UserDto>();
@@ -473,6 +491,7 @@ public async Task GetUser_WithValidId_ShouldReturnUser()
 ## 📝 Documentation Standards
 
 ### XML Documentation
+
 ```csharp
 /// <summary>
 /// Creates a new user with the specified email and personal information.
@@ -486,7 +505,7 @@ public async Task GetUser_WithValidId_ShouldReturnUser()
 /// <exception cref="ArgumentNullException">Thrown when <paramref name="request"/> is null.</exception>
 /// <exception cref="ValidationException">Thrown when the request contains invalid data.</exception>
 public async Task<Result<User>> CreateUserAsync(
-    CreateUserRequest request, 
+    CreateUserRequest request,
     CancellationToken cancellationToken = default)
 {
     // Implementation
@@ -494,6 +513,7 @@ public async Task<Result<User>> CreateUserAsync(
 ```
 
 ### Code Comments
+
 ```csharp
 // ✅ GOOD: Comments explaining business logic
 public class SkillMatchingService
@@ -526,6 +546,7 @@ public async Task<User> GetUserAsync(Guid id)
 ## 🚨 Error Handling Standards
 
 ### Exception Handling
+
 ```csharp
 // ✅ GOOD: Proper exception handling with specific types
 public class UserService : IUserService
@@ -562,6 +583,7 @@ public class DomainException : Exception
 ```
 
 ### Result Pattern
+
 ```csharp
 // ✅ GOOD: Using Result pattern instead of exceptions for business logic
 public class Result<T>
@@ -580,6 +602,7 @@ public class Result<T>
 ## 📊 Performance Guidelines
 
 ### Memory Management
+
 ```csharp
 // ✅ GOOD: Proper disposal and memory management
 public class FileService : IFileService, IDisposable
@@ -611,6 +634,7 @@ public class FileService : IFileService, IDisposable
 ```
 
 ### Efficient Collections
+
 ```csharp
 // ✅ GOOD: Use appropriate collection types
 public class SkillCacheService
@@ -648,21 +672,25 @@ public List<User> FilterActiveUsers(List<User> allUsers)
 When reviewing code, ensure:
 
 1. **Architecture Compliance**
+
    - [ ] Code is in the correct layer
    - [ ] Dependencies flow inward
    - [ ] Domain logic is in domain entities
 
 2. **Security**
+
    - [ ] Input validation present
    - [ ] Authentication/authorization implemented
    - [ ] No hardcoded secrets
 
 3. **Performance**
+
    - [ ] Async/await used properly
    - [ ] Database queries optimized
    - [ ] Proper memory management
 
 4. **Maintainability**
+
    - [ ] Clear naming conventions
    - [ ] Adequate documentation
    - [ ] SOLID principles followed

@@ -1,17 +1,19 @@
 ---
 name: Pull Request
 about: Submit changes for review with comprehensive AI code analysis
-title: '[feat/fix/docs]: Brief description'
-labels: ['needs-review']
+title: "[feat/fix/docs]: Brief description"
+labels: ["needs-review"]
 ---
 
 ## 📋 Pull Request Overview
 
 ### Summary
+
 <!-- Brief description of what this PR accomplishes -->
 
 ### Type of Change
-- [ ] 🆕 **Feature**: New functionality 
+
+- [ ] 🆕 **Feature**: New functionality
 - [ ] 🐛 **Bug Fix**: Fixes an issue
 - [ ] 🔨 **Refactor**: Code restructuring without functional changes
 - [ ] 📚 **Documentation**: Documentation updates
@@ -21,6 +23,7 @@ labels: ['needs-review']
 - [ ] 🔧 **Chore**: Maintenance tasks
 
 ### Related Issues
+
 <!-- Link to related issues: Closes #123, Relates to #456 -->
 
 ---
@@ -28,6 +31,7 @@ labels: ['needs-review']
 ## 🏗️ Architecture & Design
 
 ### Clean Architecture Compliance
+
 - [ ] Changes are in the correct architectural layer
 - [ ] Domain logic is in Domain entities, not controllers/infrastructure
 - [ ] Application layer contains business logic and validation
@@ -35,6 +39,7 @@ labels: ['needs-review']
 - [ ] Infrastructure layer properly implements interfaces
 
 ### Domain-Driven Design
+
 - [ ] Entities are rich domain models with business logic
 - [ ] Value objects are used for domain concepts
 - [ ] Business invariants are enforced in domain entities
@@ -45,6 +50,7 @@ labels: ['needs-review']
 ## 🔍 Code Quality Checklist
 
 ### Security Review
+
 - [ ] **Authentication**: All protected endpoints require proper auth
 - [ ] **Authorization**: Role-based access control is implemented
 - [ ] **Input Validation**: All user inputs are validated and sanitized
@@ -53,6 +59,7 @@ labels: ['needs-review']
 - [ ] **Data Protection**: Sensitive data is properly encrypted/hashed
 
 ### Performance & Database
+
 - [ ] **Async Operations**: All I/O operations are async with proper await
 - [ ] **Database Queries**: Optimized queries, no N+1 problems
 - [ ] **Pagination**: Large datasets use pagination
@@ -60,6 +67,7 @@ labels: ['needs-review']
 - [ ] **Connection Management**: Proper DbContext usage and disposal
 
 ### Entity Framework
+
 - [ ] **Migrations**: Proper EF migrations for schema changes
 - [ ] **Fluent API**: Entity configurations use Fluent API, not attributes
 - [ ] **Query Efficiency**: LINQ queries are optimized
@@ -70,12 +78,14 @@ labels: ['needs-review']
 ## 🧪 Testing & Validation
 
 ### Testing Coverage
+
 - [ ] **Unit Tests**: Business logic has unit tests with 80%+ coverage
 - [ ] **Integration Tests**: API endpoints have integration tests (if applicable)
 - [ ] **Repository Tests**: Data access logic is tested
 - [ ] **Edge Cases**: Error conditions and edge cases are tested
 
 ### Manual Testing
+
 - [ ] **API Testing**: Endpoints tested manually or with Postman/Swagger
 - [ ] **Database**: Database changes tested with real data
 - [ ] **Error Scenarios**: Error handling tested with invalid inputs
@@ -86,12 +96,14 @@ labels: ['needs-review']
 ## 📝 Documentation & Standards
 
 ### Code Documentation
+
 - [ ] **XML Comments**: Public APIs have XML documentation
 - [ ] **README Updates**: Documentation updated if API changes
 - [ ] **Swagger**: API documentation is accurate and complete
 - [ ] **Code Comments**: Complex business logic is well-commented
 
 ### Naming & Conventions
+
 - [ ] **C# Conventions**: Follows C# naming conventions (PascalCase, camelCase)
 - [ ] **Async Naming**: Async methods end with "Async"
 - [ ] **Interface Naming**: Interfaces prefixed with "I"
@@ -102,6 +114,7 @@ labels: ['needs-review']
 ## 🔄 Database Changes
 
 ### Schema Changes
+
 - [ ] **Migration Script**: EF migration created and tested
 - [ ] **Backward Compatibility**: Changes don't break existing data
 - [ ] **Foreign Keys**: Proper relationships and constraints
@@ -109,6 +122,7 @@ labels: ['needs-review']
 - [ ] **Rollback Plan**: Migration can be safely reverted
 
 ### Data Changes
+
 - [ ] **Seed Data**: Development and production seed data updated
 - [ ] **Data Migration**: Existing data is properly migrated
 - [ ] **Validation**: Data integrity constraints are enforced
@@ -118,6 +132,7 @@ labels: ['needs-review']
 ## 🚨 Breaking Changes
 
 ### API Compatibility
+
 - [ ] **No Breaking Changes**: Existing API contracts unchanged
 - [ ] **Versioning Strategy**: New API version if breaking changes required
 - [ ] **Client Impact**: Documented impact on existing clients
@@ -128,6 +143,7 @@ labels: ['needs-review']
 ## 📊 Business Logic Validation
 
 ### Skill Exchange Rules
+
 - [ ] **Skill Proficiency**: Users can only teach skills marked as "Can Teach"
 - [ ] **Session Limits**: Concurrent session limits enforced
 - [ ] **Availability**: Session scheduling respects user availability
@@ -135,6 +151,7 @@ labels: ['needs-review']
 - [ ] **Data Integrity**: Business rules enforced at domain level
 
 ### User Management
+
 - [ ] **Role Validation**: User roles and permissions properly validated
 - [ ] **Profile Consistency**: User profiles maintain data consistency
 - [ ] **Authentication Flow**: Auth flow follows security best practices
@@ -144,6 +161,7 @@ labels: ['needs-review']
 ## 🎯 Reviewer Focus Areas
 
 ### For GitHub Copilot Review
+
 Please pay special attention to:
 
 1. **Architecture Compliance**: Verify clean architecture boundaries
@@ -154,6 +172,7 @@ Please pay special attention to:
 6. **Code Maintainability**: Long-term maintainability and readability
 
 ### Manual Review Priorities
+
 1. **Security**: Authentication, authorization, input validation
 2. **Performance**: Database queries, async operations
 3. **Architecture**: Layer separation, dependency direction
@@ -163,11 +182,13 @@ Please pay special attention to:
 ---
 
 ## 📸 Screenshots/Demo
+
 <!-- Include screenshots for UI changes or describe API behavior changes -->
 
 ---
 
 ## 🔗 Deployment Notes
+
 <!-- Any special deployment considerations, environment variable changes, etc. -->
 
 ---
@@ -175,6 +196,7 @@ Please pay special attention to:
 ## ✅ Pre-merge Checklist
 
 ### Developer Checklist
+
 - [ ] Code compiles without warnings
 - [ ] All tests pass locally
 - [ ] Database migrations applied successfully
@@ -183,6 +205,7 @@ Please pay special attention to:
 - [ ] Updated relevant documentation
 
 ### Reviewer Checklist
+
 - [ ] Architecture review completed
 - [ ] Security review completed
 - [ ] Performance considerations reviewed
@@ -193,6 +216,7 @@ Please pay special attention to:
 ---
 
 ## 💬 Additional Notes
+
 <!-- Any additional context, concerns, or discussion points for reviewers -->
 
 ---
