@@ -49,15 +49,15 @@ public class RoleConfiguration : IEntityTypeConfiguration<Role>
 
         builder.HasIndex(r => r.IsActive).HasDatabaseName("ix_roles_is_active");
 
-        // Relationships
+        // Relationships - Configure from the principal (Role) side
         builder
-            .HasMany<UserRole>()
+            .HasMany(r => r.UserRoles)
             .WithOne(ur => ur.Role)
             .HasForeignKey(ur => ur.RoleId)
             .OnDelete(DeleteBehavior.Cascade);
 
         builder
-            .HasMany<RolePermission>()
+            .HasMany(r => r.RolePermissions)
             .WithOne(rp => rp.Role)
             .HasForeignKey(rp => rp.RoleId)
             .OnDelete(DeleteBehavior.Cascade);

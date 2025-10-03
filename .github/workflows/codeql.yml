@@ -1,0 +1,143 @@
+name: "CodeQL Security Analysis"
+
+on:
+    push:
+        branches: ["main", "develop"]
+        paths:
+            - "services/api/**/*.cs"
+            - "services/api/**/*.csproj"
+            - ".github/workflows/codeql.yml"
+    pull_request:
+        branches: ["main", "develop"]
+        paths:
+            - "services/api/**/*.cs"
+            - "services/api/**/*.csproj"
+            - ".github/workflows/codeql.yml"
+    schedule:
+        - cron: "30 2 * * 1" # Weekly security scan on Mondays at 2:30 AM UTC
+
+permissions:
+    contents: read
+    security-events: write
+    actions: read
+
+jobs:
+    analyze:
+        name: CodeQL Security Analysis
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+
+        permissions:
+            actions: read
+            contents: read
+            security-events: write
+            pull-requests: write
+
+        strategy:
+            fail-fast: false
+            matrix:
+                language: ["csharp"]
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Initialize CodeQL
+              uses: github/codeql-action/init@v3
+              with:
+                  languages: ${{ matrix.language }}
+                  queries: security-and-quality
+                  config: |
+                      paths-ignore:
+                        - "**/bin/**"
+                        - "**/obj/**"
+                        - "**/*Test*.cs"
+                        - "**/*Tests.cs"
+                        - "**/TestResults/**"
+                        - "**/Migrations/**"
+
+            - name: Setup .NET
+              uses: actions/setup-dotnet@v4
+              with:
+                  dotnet-version: "8.0.x"
+
+            - name: Cache NuGet packages
+              uses: actions/cache@v4
+              with:
+                  path: ~/.nuget/packages
+                  key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+                  restore-keys: |
+                      ${{ runner.os }}-nuget-
+
+            - name: Restore dependencies
+              working-directory: ./services/api
+              run: |
+                  echo "🔄 Restoring NuGet packages..."
+                  dotnet restore SkillSwap.sln --verbosity minimal
+
+            - name: Build solution for analysis
+              working-directory: ./services/api
+              run: |
+                  echo "🔨 Building solution for CodeQL analysis..."
+                  dotnet build SkillSwap.sln \
+                    --configuration Release \
+                    --no-restore \
+                    --verbosity minimal
+
+            - name: Perform CodeQL Analysis
+              uses: github/codeql-action/analyze@v3
+              with:
+                  category: "/language:${{matrix.language}}"
+                  upload: true
+
+            - name: Comment on PR with security analysis summary
+              if: github.event_name == 'pull_request'
+              uses: actions/github-script@v7
+              with:
+                  script: |
+                      const comment = `## 🛡️ CodeQL Security Analysis Complete
+
+                      ### Security Scan Results
+                      - ✅ **CodeQL Analysis**: Completed successfully
+                      - 🔍 **Scan Type**: Security and Quality Analysis
+                      - 📊 **Language**: C# (.NET 8)
+                      - 🎯 **Focus Areas**: 
+                        - SQL Injection vulnerabilities
+                        - Cross-site scripting (XSS) 
+                        - Authentication/Authorization issues
+                        - Data flow security
+                        - Code quality issues
+
+                      ### 📋 Security Review Guidelines
+                      Please ensure your changes:
+                      - [ ] Use parameterized queries (EF Core handles this)
+                      - [ ] Validate all user inputs
+                      - [ ] Implement proper authentication/authorization
+                      - [ ] Handle sensitive data securely
+                      - [ ] Follow secure coding practices
+
+                      📁 **Detailed Results**: Check the Security tab in your repository for complete findings.
+
+                      🔍 Any security issues found will be reported in the Security tab and require resolution before merging.`;
+
+                      // Check if we already commented to avoid spam
+                      const { data: comments } = await github.rest.issues.listComments({
+                        issue_number: context.issue.number,
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                      });
+
+                      const existingComment = comments.find(comment => 
+                        comment.body.includes('🛡️ CodeQL Security Analysis Complete')
+                      );
+
+                      if (!existingComment) {
+                        await github.rest.issues.createComment({
+                          issue_number: context.issue.number,
+                          owner: context.repo.owner,
+                          repo: context.repo.repo,
+                          body: comment
+                        });
+                      }

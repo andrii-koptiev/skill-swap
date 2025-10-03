@@ -1,22 +1,98 @@
 using Microsoft.EntityFrameworkCore;
+using Serilog;
+using SkillSwap.Api.Extensions;
+using SkillSwap.Api.Middleware;
 using SkillSwap.Infrastructure.Data;
 using SkillSwap.Infrastructure.Data.Extensions;
 
+// Configure Serilog early for startup logging
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+// Configure Serilog
+builder.ConfigureSerilog();
 
-// Add Entity Framework and PostgreSQL
-builder.Services.AddDbContext<SkillSwapDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
-);
+try
+{
+    Log.Information("Starting SkillSwap API application");
 
-var app = builder.Build();
+    // Add services to the container
+    builder.Services.AddControllers();
+    builder.Services.AddEndpointsApiExplorer();
+    builder.Services.AddSwaggerGen(c =>
+    {
+        c.SwaggerDoc(
+            "v1",
+            new()
+            {
+                Title = "SkillSwap API",
+                Version = "v1",
+                Description = "API for the SkillSwap peer-to-peer skill exchange platform",
+            }
+        );
+    });
 
-// Apply migrations and seed data in development
-if (app.Environment.IsDevelopment())
+    // Add Entity Framework and PostgreSQL
+    builder.Services.AddDbContext<SkillSwapDbContext>(options =>
+        options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
+    );
+
+    // Add validation services
+    builder.Services.AddValidation();
+
+    // Add health checks
+    builder.Services.AddHealthChecks().AddDbContextCheck<SkillSwapDbContext>();
+
+    var app = builder.Build();
+
+    // Configure the HTTP request pipeline
+
+    // 1. Exception handling (must be first)
+    app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+    // 2. Request logging
+    app.UseRequestLogging();
+
+    // 3. Development tools
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseSwagger();
+        app.UseSwaggerUI(c =>
+        {
+            c.SwaggerEndpoint("/swagger/v1/swagger.json", "SkillSwap API V1");
+            c.RoutePrefix = string.Empty; // Set Swagger UI at app's root
+        });
+    }
+
+    // 4. Security headers and HTTPS
+    app.UseHttpsRedirection();
+
+    // 5. Authentication and Authorization (when implemented)
+
+    // 6. Map controllers and health checks
+    app.MapControllers();
+    app.MapHealthChecks("/health");
+
+    // Apply migrations and seed data
+    await InitializeDatabaseAsync(app);
+
+    Log.Information("SkillSwap API application started successfully");
+    await app.RunAsync();
+    return 0; // Success exit code
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "SkillSwap API application terminated unexpectedly");
+    return 1; // Exit code indicating failure
+}
+finally
+{
+    await Log.CloseAndFlushAsync();
+}
+
+/// <summary>
+/// Initializes the database with migrations and seed data.
+/// </summary>
+static async Task InitializeDatabaseAsync(WebApplication app)
 {
     using var scope = app.Services.CreateScope();
     var context = scope.ServiceProvider.GetRequiredService<SkillSwapDbContext>();
@@ -38,12 +114,6 @@ if (app.Environment.IsDevelopment())
             await app.Services.SeedDevelopmentDataAsync(logger);
             logger.LogInformation("Development data seeding completed");
         }
-        else
-        {
-            logger.LogInformation(
-                "Skipping development data seeding - not in development environment"
-            );
-        }
     }
     catch (Exception ex)
     {
@@ -53,52 +123,4 @@ if (app.Environment.IsDevelopment())
             ex
         );
     }
-}
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
-app.UseHttpsRedirection();
-
-var summaries = new[]
-{
-    "Freezing",
-    "Bracing",
-    "Chilly",
-    "Cool",
-    "Mild",
-    "Warm",
-    "Balmy",
-    "Hot",
-    "Sweltering",
-    "Scorching",
-};
-
-app.MapGet(
-        "/weatherforecast",
-        () =>
-        {
-            var forecast = Enumerable
-                .Range(1, 5)
-                .Select(index => new WeatherForecast(
-                    DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-                    Random.Shared.Next(-20, 55),
-                    summaries[Random.Shared.Next(summaries.Length)]
-                ))
-                .ToArray();
-            return forecast;
-        }
-    )
-    .WithName("GetWeatherForecast")
-    .WithOpenApi();
-
-await app.RunAsync();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
 }

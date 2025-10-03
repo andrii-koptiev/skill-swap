@@ -1,0 +1,71 @@
+# CodeQL Configuration for SkillSwap .NET API
+# This file customizes security analysis for the C# codebase
+
+name: "SkillSwap Security Analysis"
+
+# Paths to analyze
+paths:
+  - "services/api/src/SkillSwap.Api"
+  - "services/api/src/SkillSwap.Application"
+  - "services/api/src/SkillSwap.Domain"
+  - "services/api/src/SkillSwap.Infrastructure"
+
+# Paths to ignore during analysis
+paths-ignore:
+  - "services/api/src/**/bin/**"
+  - "services/api/src/**/obj/**"
+  - "services/api/src/**/*Test*.cs"
+  - "services/api/src/**/*Tests.cs"
+  - "services/api/TestResults/**"
+  - "services/api/src/**/Migrations/**"
+
+# Query suites to include
+queries:
+  # Core security analysis
+  - uses: security-and-quality
+  - uses: security-extended
+
+# Custom query configuration
+query-filters:
+  # Exclude certain low-priority warnings
+  - exclude:
+      id: cs/empty-catch-block
+      # We may have legitimate empty catch blocks for cleanup operations
+
+  - exclude:
+      id: cs/useless-assignment-to-local
+      # Some assignments may be for debugging purposes
+
+# Analysis configuration
+database:
+  # Create optimized database for faster analysis
+  finalize-database: true
+
+  # Custom build commands (handled in workflow)
+  build-mode: manual
+
+# Report configuration
+reporting:
+  # Include all severity levels
+  min-severity: note
+
+  # Group related findings
+  grouping: true
+
+# Advanced analysis options
+analysis:
+  # Enable data flow analysis for security vulnerabilities
+  dataflow: true
+
+  # Analyze third-party dependencies
+  external-analysis: true
+
+  # Deep analysis for authentication/authorization patterns
+  security-patterns:
+    - authentication
+    - authorization
+    - input-validation
+    - sql-injection
+    - xss-prevention
+    - crypto-operations
+    - file-operations

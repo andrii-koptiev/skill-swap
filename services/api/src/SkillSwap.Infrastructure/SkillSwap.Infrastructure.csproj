@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <ProjectReference Include="..\Skillswap.Domain\SkillSwap.Domain.csproj" />
-    <ProjectReference Include="..\Skillswap.Application\SkillSwap.Application.csproj" />
+    <ProjectReference Include="..\SkillSwap.Domain\SkillSwap.Domain.csproj" />
+    <ProjectReference Include="..\SkillSwap.Application\SkillSwap.Application.csproj" />
   </ItemGroup>
 
   <ItemGroup>

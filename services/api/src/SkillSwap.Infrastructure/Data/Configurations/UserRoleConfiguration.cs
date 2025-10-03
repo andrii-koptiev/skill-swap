@@ -59,17 +59,11 @@ public class UserRoleConfiguration : IEntityTypeConfiguration<UserRole>
 
         builder.HasIndex(ur => ur.ExpiresAt).HasDatabaseName("ix_user_roles_expires_at");
 
-        // Relationships
+        // Relationships - Configure User relationship only (Role relationship configured in RoleConfiguration)
         builder
             .HasOne(ur => ur.User)
             .WithMany()
             .HasForeignKey(ur => ur.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
-
-        builder
-            .HasOne(ur => ur.Role)
-            .WithMany()
-            .HasForeignKey(ur => ur.RoleId)
             .OnDelete(DeleteBehavior.Cascade);
     }
 }
