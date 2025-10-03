@@ -40,7 +40,7 @@ public interface IRepository<T> where T : BaseEntity
     Task<IEnumerable<T>> GetAllAsync(CancellationToken cancellationToken = default);
     Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate, CancellationToken cancellationToken = default);
     Task<(IEnumerable<T> Items, int TotalCount)> GetPagedAsync(int page, int pageSize, CancellationToken cancellationToken = default);
-    
+
     // Write Operations
     Task AddAsync(T entity, CancellationToken cancellationToken = default);
     Task AddRangeAsync(IEnumerable<T> entities, CancellationToken cancellationToken = default);
@@ -49,7 +49,7 @@ public interface IRepository<T> where T : BaseEntity
     void Delete(T entity);
     void DeleteRange(IEnumerable<T> entities);
     Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
-    
+
     // Utility Operations
     Task<bool> ExistsAsync(Guid id, CancellationToken cancellationToken = default);
     Task<int> CountAsync(CancellationToken cancellationToken = default);
@@ -72,10 +72,10 @@ public interface IUnitOfWork : IDisposable
     IRoleRepository Roles { get; }
     IUserRoleRepository UserRoles { get; }
     IRolePermissionRepository RolePermissions { get; }
-    
+
     // Generic Repository Access
     IRepository<T> Repository<T>() where T : BaseEntity;
-    
+
     // Transaction Management
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     Task<IUnitOfWorkTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default);
@@ -224,13 +224,13 @@ public class SkillSwapService
     public async Task<SkillSwapSessionDto> CreateSkillSwapSessionAsync(CreateSkillSwapRequest request)
     {
         using var transaction = await _unitOfWork.BeginTransactionAsync();
-        
+
         try
         {
             // Validate users exist
             var teacher = await _unitOfWork.Users.GetByIdAsync(request.TeacherId);
             var learner = await _unitOfWork.Users.GetByIdAsync(request.LearnerId);
-            
+
             if (teacher == null || learner == null)
                 throw new NotFoundException("One or both users not found");
 
@@ -254,7 +254,7 @@ public class SkillSwapService
             // Update user statistics (example of coordinated operations)
             teacher.SessionsAsTeacherCount++;
             learner.SessionsAsLearnerCount++;
-            
+
             _unitOfWork.Users.Update(teacher);
             _unitOfWork.Users.Update(learner);
 
@@ -310,8 +310,8 @@ public class UserRepository : Repository<User>, IUserRepository
         string searchTerm, int page, int pageSize, CancellationToken cancellationToken = default)
     {
         var query = _context.Users
-            .Where(u => u.FirstName.Contains(searchTerm) || 
-                       u.LastName.Contains(searchTerm) || 
+            .Where(u => u.FirstName.Contains(searchTerm) ||
+                       u.LastName.Contains(searchTerm) ||
                        u.Email.Contains(searchTerm));
 
         var totalCount = await query.CountAsync(cancellationToken);
@@ -453,7 +453,7 @@ public class UserRepositoryIntegrationTests : IClassFixture<TestDatabaseFixture>
         // Arrange
         using var scope = _fixture.ServiceProvider.CreateScope();
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-        
+
         var user = new User
         {
             Email = "integration@test.com",
@@ -549,7 +549,7 @@ public async Task BadMethod()
 {
     await _unitOfWork.Users.AddAsync(user1);
     await _unitOfWork.SaveChangesAsync(); // Inefficient
-    
+
     await _unitOfWork.Users.AddAsync(user2);
     await _unitOfWork.SaveChangesAsync(); // Inefficient
 }
@@ -575,7 +575,7 @@ public async Task ComplexOperation()
         await _unitOfWork.Users.AddAsync(user);
         await _unitOfWork.UserSkills.AddRangeAsync(userSkills);
         await _unitOfWork.SaveChangesAsync();
-        
+
         await transaction.CommitAsync();
     }
     catch
@@ -606,23 +606,23 @@ public class Repository<T> : IRepository<T> where T : BaseEntity
     {
         using var activity = Activity.StartActivity($"Repository.GetById.{typeof(T).Name}");
         activity?.SetTag("entity.id", id.ToString());
-        
+
         var stopwatch = Stopwatch.StartNew();
-        
+
         try
         {
             var entity = await _context.Set<T>().FindAsync(new object[] { id }, cancellationToken);
-            
+
             stopwatch.Stop();
-            _logger.LogDebug("Retrieved {EntityType} with ID {Id} in {ElapsedMs}ms", 
+            _logger.LogDebug("Retrieved {EntityType} with ID {Id} in {ElapsedMs}ms",
                 typeof(T).Name, id, stopwatch.ElapsedMilliseconds);
-            
+
             return entity;
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
-            _logger.LogError(ex, "Error retrieving {EntityType} with ID {Id} after {ElapsedMs}ms", 
+            _logger.LogError(ex, "Error retrieving {EntityType} with ID {Id} after {ElapsedMs}ms",
                 typeof(T).Name, id, stopwatch.ElapsedMilliseconds);
             throw;
         }
@@ -635,14 +635,17 @@ public class Repository<T> : IRepository<T> where T : BaseEntity
 ### Common Issues
 
 1. **N+1 Query Problems**
+
    - **Symptom**: Many database queries for related data
    - **Solution**: Use explicit `Include()` statements or projection
 
 2. **Memory Issues with Large Datasets**
+
    - **Symptom**: High memory usage, slow performance
    - **Solution**: Implement pagination, use `IAsyncEnumerable`, or projections
 
 3. **Transaction Deadlocks**
+
    - **Symptom**: Database timeouts or deadlock exceptions
    - **Solution**: Keep transactions short, consistent locking order
 
@@ -671,4 +674,4 @@ services.AddDbContext<SkillSwapDbContext>(options =>
 
 ---
 
-*This documentation is part of the SkillSwap API project. For questions or improvements, please refer to the project's contribution guidelines.*
+_This documentation is part of the SkillSwap API project. For questions or improvements, please refer to the project's contribution guidelines._
