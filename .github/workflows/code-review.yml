@@ -178,7 +178,7 @@ jobs:
   database-validation:
     name: Database Migration Validation
     runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.changed_files, 'Migrations/') || contains(github.event.pull_request.title, 'migration')
+    if: github.event_name == 'pull_request'
 
     services:
       postgres:
@@ -201,16 +201,61 @@ jobs:
         with:
           fetch-depth: 0 # Need full history for migration validation
 
+      - name: Check for migration-related changes
+        id: check-migrations
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: files } = await github.rest.pulls.listFiles({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+
+            const migrationFiles = files.filter(file => 
+              file.filename.includes('Migrations/') || 
+              file.filename.includes('migration') ||
+              file.filename.endsWith('.sql')
+            );
+
+            const hasMigrations = migrationFiles.length > 0;
+            const titleHasMigration = context.payload.pull_request.title.toLowerCase().includes('migration');
+
+            const shouldRunValidation = hasMigrations || titleHasMigration;
+
+            console.log(`Migration files found: ${migrationFiles.length}`);
+            console.log(`Title contains migration: ${titleHasMigration}`);
+            console.log(`Should run validation: ${shouldRunValidation}`);
+
+            core.setOutput('should-run', shouldRunValidation);
+
+            if (migrationFiles.length > 0) {
+              console.log('Migration files changed:');
+              migrationFiles.forEach(file => console.log(`  - ${file.filename}`));
+            }
+
+      - name: Skip job if no migrations
+        if: steps.check-migrations.outputs.should-run != 'true'
+        run: |
+          echo "No migration-related changes detected. Skipping database validation."
+          echo "This job only runs when:"
+          echo "  - Files in Migrations/ folders are changed"
+          echo "  - PR title contains 'migration'"
+          echo "  - SQL files are modified"
+
       - name: Setup .NET
+        if: steps.check-migrations.outputs.should-run == 'true'
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "8.0.x"
 
       - name: Restore dependencies
+        if: steps.check-migrations.outputs.should-run == 'true'
         working-directory: ./services/api
         run: dotnet restore SkillSwap.sln
 
       - name: Test database migration
+        if: steps.check-migrations.outputs.should-run == 'true'
         working-directory: ./services/api/src/SkillSwap.Infrastructure
         env:
           ConnectionStrings__DefaultConnection: "Host=localhost;Port=5432;Database=skillswap_migration_test;Username=skillswap_user;Password=skillswap_password"
@@ -225,7 +270,7 @@ jobs:
           echo "Testing migration rollback capability..."
 
       - name: Comment on PR with migration results
-        if: always()
+        if: steps.check-migrations.outputs.should-run == 'true' && always()
         uses: actions/github-script@v7
         with:
           script: |

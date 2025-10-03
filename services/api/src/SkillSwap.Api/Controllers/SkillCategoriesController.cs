@@ -55,7 +55,7 @@ public class SkillCategoriesController : ControllerBase
             request.Name
         );
 
-        return CreatedAtAction(nameof(GetSkillCategory), new { id = Guid.NewGuid() }, request);
+        return NoContent();
     }
 
     /// <summary>
@@ -73,7 +73,15 @@ public class SkillCategoriesController : ControllerBase
         // TODO: Implement actual retrieval logic
         await Task.Delay(1); // Simulate async operation
 
-        return NotFound($"Skill category with ID {id} not found");
+        return NotFound(
+            new ProblemDetails
+            {
+                Status = StatusCodes.Status404NotFound,
+                Title = "Skill Category Not Found",
+                Detail = $"Skill category with ID {id} not found",
+                Instance = HttpContext?.Request?.Path,
+            }
+        );
     }
 
     /// <summary>

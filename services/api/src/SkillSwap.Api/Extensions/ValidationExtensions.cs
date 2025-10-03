@@ -13,7 +13,7 @@ public static class ValidationExtensions
     public static IServiceCollection AddValidation(this IServiceCollection services)
     {
         // Register all validators from the API assembly
-        services.AddValidatorsFromAssemblyContaining<Program>(ServiceLifetime.Singleton);
+        services.AddValidatorsFromAssemblyContaining<Program>();
 
         return services;
     }

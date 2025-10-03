@@ -74,7 +74,10 @@ public class ExceptionHandlingMiddleware
         return exception switch
         {
             DomainException domainEx => HandleDomainException(domainEx),
-            ValidationException validationEx => HandleValidationException(validationEx),
+            FluentValidation.ValidationException fluentValidationEx =>
+                HandleFluentValidationException(fluentValidationEx),
+            SkillSwap.Domain.Common.ValidationException domainValidationEx =>
+                HandleDomainValidationException(domainValidationEx),
             UnauthorizedAccessException => HandleUnauthorizedAccessException(),
             ArgumentNullException argEx => HandleArgumentException(argEx),
             ArgumentException argEx => HandleArgumentException(argEx),
@@ -97,23 +100,75 @@ public class ExceptionHandlingMiddleware
         );
     }
 
-    private (HttpStatusCode, ErrorDetails) HandleValidationException(
-        ValidationException validationEx
+    private (HttpStatusCode, ErrorDetails) HandleFluentValidationException(
+        FluentValidation.ValidationException fluentValidationEx
     )
     {
+        // Normalize FluentValidation errors to consistent structure
+        var normalizedErrors = NormalizeValidationErrors(fluentValidationEx.Errors);
+
+        return (
+            HttpStatusCode.BadRequest,
+            new ErrorDetails
+            {
+                Code = "VALIDATION_FAILED",
+                Message = "One or more validation failures occurred.",
+                Details = _environment.IsDevelopment() ? fluentValidationEx.ToString() : null,
+                Errors = normalizedErrors,
+            }
+        );
+    }
+
+    private (HttpStatusCode, ErrorDetails) HandleDomainValidationException(
+        SkillSwap.Domain.Common.ValidationException domainValidationEx
+    )
+    {
+        // Use existing domain validation errors if available, otherwise normalize from exception
+        var normalizedErrors =
+            domainValidationEx.Errors.Count > 0
+                ? domainValidationEx.Errors
+                : NormalizeValidationErrors(domainValidationEx.Message);
+
         return (
             HttpStatusCode.BadRequest,
             new ErrorDetails
             {
                 Code = "VALIDATION_FAILED",
                 Message =
-                    validationEx.Errors.Count > 0
+                    normalizedErrors.Count > 0
                         ? "One or more validation failures occurred."
                         : "Validation failed",
-                Details = _environment.IsDevelopment() ? validationEx.ToString() : null,
-                Errors = validationEx.Errors.Count > 0 ? validationEx.Errors : null,
+                Details = _environment.IsDevelopment() ? domainValidationEx.ToString() : null,
+                Errors = normalizedErrors.Count > 0 ? normalizedErrors : null,
             }
         );
+    }
+
+    /// <summary>
+    /// Normalizes FluentValidation errors into a consistent dictionary structure.
+    /// </summary>
+    /// <param name="validationFailures">FluentValidation error collection</param>
+    /// <returns>Dictionary with property names as keys and error messages as values</returns>
+    private static Dictionary<string, string[]> NormalizeValidationErrors(
+        IEnumerable<FluentValidation.Results.ValidationFailure> validationFailures
+    )
+    {
+        return validationFailures
+            .GroupBy(failure => failure.PropertyName)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Select(failure => failure.ErrorMessage).ToArray()
+            );
+    }
+
+    /// <summary>
+    /// Normalizes a single validation message into the dictionary structure.
+    /// </summary>
+    /// <param name="validationMessage">Single validation error message</param>
+    /// <returns>Dictionary with general error key and message</returns>
+    private static Dictionary<string, string[]> NormalizeValidationErrors(string validationMessage)
+    {
+        return new Dictionary<string, string[]> { ["General"] = [validationMessage] };
     }
 
     private static (HttpStatusCode, ErrorDetails) HandleUnauthorizedAccessException()
