@@ -52,6 +52,112 @@
 - **Benefits**: Security, consistent error format, centralized logging
 - **Priority**: ⭐⭐⭐ High (Essential for production APIs)
 
+### 🏷️ Error Code System
+
+Our API implements a comprehensive error code system that provides machine-readable error identifiers alongside human-readable messages. This enables better client-side error handling, localization support, and programmatic error processing.
+
+#### Error Response Format
+
+All API errors follow this standardized format:
+
+```json
+{
+  "code": "VALIDATION_FAILED",
+  "message": "One or more validation failures occurred.",
+  "errors": {
+    "Email": ["Email is required", "Email must be a valid email address"],
+    "Password": ["Password must contain at least one uppercase letter"]
+  },
+  "traceId": "0HN4A8AAAAAAH8:00000001",
+  "timestamp": "2025-10-02T10:30:00.123Z"
+}
+```
+
+#### Standard Error Codes
+
+| Error Code | HTTP Status | Description | When It Occurs |
+|------------|-------------|-------------|----------------|
+| `VALIDATION_FAILED` | 400 | Input validation failures | Invalid request data, field validation errors |
+| `DOMAIN_RULE_VIOLATION` | 400 | Business rule violations | Domain logic constraints violated |
+| `INVALID_PARAMETERS` | 400 | Invalid request parameters | Null arguments, invalid parameter values |
+| `INVALID_OPERATION` | 400 | Invalid operation attempts | Operation not allowed in current state |
+| `UNAUTHORIZED_ACCESS` | 401 | Authentication/authorization failures | Missing/invalid credentials, insufficient permissions |
+| `RESOURCE_NOT_FOUND` | 404 | Resource not found | Requested entity doesn't exist |
+| `INTERNAL_SERVER_ERROR` | 500 | Unexpected server errors | Unhandled exceptions, system failures |
+
+#### Client-Side Error Handling
+
+**TypeScript/JavaScript Example:**
+```typescript
+async function handleApiError(response: Response) {
+  const error = await response.json();
+  
+  switch (error.code) {
+    case 'VALIDATION_FAILED':
+      // Display field-level validation errors
+      displayValidationErrors(error.errors);
+      break;
+      
+    case 'UNAUTHORIZED_ACCESS':
+      // Redirect to login or refresh token
+      redirectToLogin();
+      break;
+      
+    case 'RESOURCE_NOT_FOUND':
+      // Show appropriate not found message
+      showNotFoundMessage();
+      break;
+      
+    case 'DOMAIN_RULE_VIOLATION':
+      // Display business rule error
+      showBusinessRuleError(error.message);
+      break;
+      
+    default:
+      // Generic error handling
+      showGenericError(error.message);
+  }
+}
+```
+
+**Localization Support:**
+```typescript
+// Use error codes for localization
+const localizedMessage = i18n.t(`errors.${error.code}`, {
+  defaultValue: error.message
+});
+```
+
+#### Implementation Details
+
+**Exception Mapping:**
+- `ValidationException` → `VALIDATION_FAILED`
+- `DomainException` → `DOMAIN_RULE_VIOLATION`  
+- `UnauthorizedAccessException` → `UNAUTHORIZED_ACCESS`
+- `ArgumentException`/`ArgumentNullException` → `INVALID_PARAMETERS`
+- `KeyNotFoundException` → `RESOURCE_NOT_FOUND`
+- `InvalidOperationException` → `INVALID_OPERATION`
+- All other exceptions → `INTERNAL_SERVER_ERROR`
+
+**Field-Level Validation Errors:**
+- When `ValidationException` contains field-specific errors, they're included in the `errors` object
+- Each field maps to an array of error messages
+- Supports multiple validation errors per field
+
+**Development vs Production:**
+- `details` field is only populated in development environment
+- Production responses never expose sensitive debugging information
+- All responses include `traceId` for support and debugging
+
+#### Benefits
+
+1. **Programmatic Handling**: Clients can implement specific logic for each error type
+2. **Localization**: Error codes enable consistent multi-language support
+3. **Analytics**: Structured error tracking and monitoring
+4. **User Experience**: Context-appropriate error messages and actions
+5. **API Evolution**: Error codes remain stable as messages evolve
+6. **Testing**: Reliable error scenarios for automated testing
+
 #### 5. Result Pattern
 
 - **Purpose**: Functional error handling without throwing exceptions

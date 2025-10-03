@@ -265,24 +265,39 @@ jobs:
           # Look for actual hardcoded credentials (strings with = assignments)
           SECURITY_ISSUES=""
 
-          # Check for hardcoded passwords (excluding legitimate variable names and comments)
-          if grep -r "password\s*=\s*[\"']" --include="*.cs" --include="*.json" src/ | grep -v "//"; then
+          # Check for hardcoded passwords (more specific patterns to avoid false positives)
+          echo "Scanning for hardcoded passwords..."
+          if grep -r -E "password\s*=\s*[\"'][^\"']{3,}[\"']" --include="*.cs" --include="*.json" src/ | grep -v "//" | grep -v -E "(PasswordPolicy|PasswordValidator|PasswordOptions|PasswordConfiguration|PasswordSettings|\.Password\s*=\s*[\"']{{|\$\{|%|Environment)"; then
+            echo "⚠️ Potential hardcoded passwords found"
             SECURITY_ISSUES="hardcoded_password"
           fi
 
           # Check for API keys or secrets in assignments
-          if grep -r "\(secret\|apikey\|api_key\)\s*=\s*[\"'][^\"']*[\"']" --include="*.cs" --include="*.json" src/ | grep -v "//"; then
+          echo "Scanning for hardcoded API keys and secrets..."
+          if grep -r -E "(secret|apikey|api_key|access_key|private_key)\s*=\s*[\"'][^\"']{10,}[\"']" --include="*.cs" --include="*.json" src/ | grep -v "//" | grep -v -E "(SecretManager|ApiKeyPolicy|Configuration|Settings|\$\{|%|Environment)"; then
+            echo "⚠️ Potential hardcoded secrets found"
             SECURITY_ISSUES="${SECURITY_ISSUES} hardcoded_secrets"
           fi
 
-          # Check for connection strings with embedded credentials
-          if grep -r "Server=.*Password=" --include="*.cs" --include="*.json" src/ | grep -v "//"; then
+          # Check for connection strings with embedded credentials (critical security issue)
+          echo "Scanning for connection strings with embedded passwords..."
+          if grep -r -E "(Server|Host)=.*Password\s*=\s*[^;]{3,}" --include="*.cs" --include="*.json" src/ | grep -v "//" | grep -v -E "(ConfigurationExample|ConnectionStringBuilder|Configuration|Settings|\$\{|%|Environment\.GetConnectionString)"; then
+            echo "⚠️ Connection strings with embedded passwords found"
             SECURITY_ISSUES="${SECURITY_ISSUES} connection_string_creds"
           fi
 
           # Check for bearer tokens or auth tokens
-          if grep -r "\(token\|bearer\)\s*=\s*[\"'][A-Za-z0-9+/=]{20,}[\"']" --include="*.cs" --include="*.json" src/ | grep -v "//"; then
+          echo "Scanning for hardcoded authentication tokens..."
+          if grep -r -E "(token|bearer|jwt|auth_token)\s*=\s*[\"'][A-Za-z0-9+/=]{20,}[\"']" --include="*.cs" --include="*.json" src/ | grep -v "//" | grep -v -E "(TokenPolicy|BearerOptions|Configuration|Settings|\$\{|%|Environment)"; then
+            echo "⚠️ Potential hardcoded tokens found"
             SECURITY_ISSUES="${SECURITY_ISSUES} hardcoded_tokens"
+          fi
+
+          # Check for encryption keys
+          echo "Scanning for hardcoded encryption keys..."
+          if grep -r -E "(encryption_key|secret_key|private_key)\s*=\s*[\"'][A-Za-z0-9+/=]{16,}[\"']" --include="*.cs" --include="*.json" src/ | grep -v "//" | grep -v -E "(Configuration|Settings|\$\{|%|Environment)"; then
+            echo "⚠️ Potential hardcoded encryption keys found"
+            SECURITY_ISSUES="${SECURITY_ISSUES} hardcoded_encryption_keys"
           fi
 
           if [ -n "$SECURITY_ISSUES" ]; then

@@ -193,3 +193,22 @@ Focus on areas where:
 - **Skill Verification**: Community-driven credibility system
 - **Advanced Matching**: AI-powered compatibility and learning path recommendations
 - **Monetization**: Premium features, skill certification, professional networking
+
+## 📚 Documentation
+
+### For Developers
+
+- **[API Documentation](./api-documentation.md)** - Complete API reference with error handling, authentication, and client examples
+- **[Tools & Architecture](./tools-and-architecture.md)** - Development patterns, architecture decisions, and implementation guidelines
+- **[Database Schema](./database-schema.md)** - Database design and entity relationships
+- **[Implementation Guide](./implementation-phase1.md)** - Phase 1 development roadmap and priorities
+
+### For Business & Product
+
+- **[Core Concepts](./README.md)** - This document covering user flows, competitive analysis, and business strategy
+
+## 🔗 Quick Links
+
+- **Error Handling**: See [Error Code System](./tools-and-architecture.md#🏷️-error-code-system) for comprehensive error handling documentation
+- **API Integration**: Start with [API Documentation](./api-documentation.md) for client development
+- **Development Setup**: Check [Tools & Architecture](./tools-and-architecture.md) for development environment setup

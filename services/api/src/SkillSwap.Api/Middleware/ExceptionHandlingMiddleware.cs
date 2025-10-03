@@ -53,8 +53,10 @@ public class ExceptionHandlingMiddleware
 
         var response = new ErrorResponse
         {
+            Code = error.Code,
             Message = error.Message,
             Details = _environment.IsDevelopment() ? error.Details : null,
+            Errors = error.Errors,
             TraceId = context.TraceIdentifier,
             Timestamp = DateTime.UtcNow,
         };
@@ -71,80 +73,175 @@ public class ExceptionHandlingMiddleware
     {
         return exception switch
         {
-            DomainException domainEx => (
-                HttpStatusCode.BadRequest,
-                new ErrorDetails
-                {
-                    Message = domainEx.Message,
-                    Details = _environment.IsDevelopment() ? domainEx.ToString() : null,
-                }
-            ),
-            ValidationException validationEx => (
-                HttpStatusCode.BadRequest,
-                new ErrorDetails
-                {
-                    Message = "Validation failed",
-                    Details = _environment.IsDevelopment() ? validationEx.ToString() : null,
-                }
-            ),
-            UnauthorizedAccessException => (
-                HttpStatusCode.Unauthorized,
-                new ErrorDetails
-                {
-                    Message = "Unauthorized access",
-                    Details = null, // Never expose auth details
-                }
-            ),
-            ArgumentNullException argEx => (
-                HttpStatusCode.BadRequest,
-                new ErrorDetails
-                {
-                    Message = "Invalid request parameters",
-                    Details = _environment.IsDevelopment() ? argEx.Message : null,
-                }
-            ),
-            ArgumentException argEx => (
-                HttpStatusCode.BadRequest,
-                new ErrorDetails
-                {
-                    Message = "Invalid request parameters",
-                    Details = _environment.IsDevelopment() ? argEx.Message : null,
-                }
-            ),
-            KeyNotFoundException => (
-                HttpStatusCode.NotFound,
-                new ErrorDetails { Message = "Resource not found", Details = null }
-            ),
-            InvalidOperationException opEx => (
-                HttpStatusCode.BadRequest,
-                new ErrorDetails
-                {
-                    Message = "Invalid operation",
-                    Details = _environment.IsDevelopment() ? opEx.Message : null,
-                }
-            ),
-            _ => (
-                HttpStatusCode.InternalServerError,
-                new ErrorDetails
-                {
-                    Message = "An internal server error occurred",
-                    Details = _environment.IsDevelopment() ? exception.ToString() : null,
-                }
-            ),
+            DomainException domainEx => HandleDomainException(domainEx),
+            ValidationException validationEx => HandleValidationException(validationEx),
+            UnauthorizedAccessException => HandleUnauthorizedAccessException(),
+            ArgumentNullException argEx => HandleArgumentException(argEx),
+            ArgumentException argEx => HandleArgumentException(argEx),
+            KeyNotFoundException => HandleKeyNotFoundException(),
+            InvalidOperationException opEx => HandleInvalidOperationException(opEx),
+            _ => HandleGenericException(exception),
         };
     }
 
-    private sealed record ErrorDetails
+    private (HttpStatusCode, ErrorDetails) HandleDomainException(DomainException domainEx)
     {
-        public string Message { get; init; } = string.Empty;
-        public string? Details { get; init; }
+        return (
+            HttpStatusCode.BadRequest,
+            new ErrorDetails
+            {
+                Code = "DOMAIN_RULE_VIOLATION",
+                Message = domainEx.Message,
+                Details = _environment.IsDevelopment() ? domainEx.ToString() : null,
+            }
+        );
     }
 
+    private (HttpStatusCode, ErrorDetails) HandleValidationException(
+        ValidationException validationEx
+    )
+    {
+        return (
+            HttpStatusCode.BadRequest,
+            new ErrorDetails
+            {
+                Code = "VALIDATION_FAILED",
+                Message =
+                    validationEx.Errors.Count > 0
+                        ? "One or more validation failures occurred."
+                        : "Validation failed",
+                Details = _environment.IsDevelopment() ? validationEx.ToString() : null,
+                Errors = validationEx.Errors.Count > 0 ? validationEx.Errors : null,
+            }
+        );
+    }
+
+    private static (HttpStatusCode, ErrorDetails) HandleUnauthorizedAccessException()
+    {
+        return (
+            HttpStatusCode.Unauthorized,
+            new ErrorDetails
+            {
+                Code = "UNAUTHORIZED_ACCESS",
+                Message = "Unauthorized access",
+                Details = null, // Never expose auth details
+            }
+        );
+    }
+
+    private (HttpStatusCode, ErrorDetails) HandleArgumentException(Exception argEx)
+    {
+        return (
+            HttpStatusCode.BadRequest,
+            new ErrorDetails
+            {
+                Code = "INVALID_PARAMETERS",
+                Message = "Invalid request parameters",
+                Details = _environment.IsDevelopment() ? argEx.Message : null,
+            }
+        );
+    }
+
+    private static (HttpStatusCode, ErrorDetails) HandleKeyNotFoundException()
+    {
+        return (
+            HttpStatusCode.NotFound,
+            new ErrorDetails
+            {
+                Code = "RESOURCE_NOT_FOUND",
+                Message = "Resource not found",
+                Details = null,
+            }
+        );
+    }
+
+    private (HttpStatusCode, ErrorDetails) HandleInvalidOperationException(
+        InvalidOperationException opEx
+    )
+    {
+        return (
+            HttpStatusCode.BadRequest,
+            new ErrorDetails
+            {
+                Code = "INVALID_OPERATION",
+                Message = "Invalid operation",
+                Details = _environment.IsDevelopment() ? opEx.Message : null,
+            }
+        );
+    }
+
+    private (HttpStatusCode, ErrorDetails) HandleGenericException(Exception exception)
+    {
+        return (
+            HttpStatusCode.InternalServerError,
+            new ErrorDetails
+            {
+                Code = "INTERNAL_SERVER_ERROR",
+                Message = "An internal server error occurred",
+                Details = _environment.IsDevelopment() ? exception.ToString() : null,
+            }
+        );
+    }
+
+    /// <summary>
+    /// Error details for API responses.
+    /// </summary>
+    private sealed record ErrorDetails
+    {
+        /// <summary>
+        /// Machine-readable error code for client-side handling and localization.
+        /// </summary>
+        public string Code { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Human-readable error message.
+        /// </summary>
+        public string Message { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Additional error details (only in development environment).
+        /// </summary>
+        public string? Details { get; init; }
+
+        /// <summary>
+        /// Field-level validation errors (for validation failures).
+        /// </summary>
+        public Dictionary<string, string[]>? Errors { get; init; }
+    }
+
+    /// <summary>
+    /// Standard API error response format.
+    /// </summary>
     private sealed record ErrorResponse
     {
+        /// <summary>
+        /// Machine-readable error code for client-side handling and localization.
+        /// </summary>
+        public string Code { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Human-readable error message.
+        /// </summary>
         public string Message { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Additional error details (only in development environment).
+        /// </summary>
         public string? Details { get; init; }
+
+        /// <summary>
+        /// Field-level validation errors (for validation failures).
+        /// </summary>
+        public Dictionary<string, string[]>? Errors { get; init; }
+
+        /// <summary>
+        /// Request trace identifier for debugging.
+        /// </summary>
         public string TraceId { get; init; } = string.Empty;
+
+        /// <summary>
+        /// Error occurrence timestamp in UTC.
+        /// </summary>
         public DateTime Timestamp { get; init; }
     }
 }

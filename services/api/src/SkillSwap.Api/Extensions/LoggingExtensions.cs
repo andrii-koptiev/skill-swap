@@ -62,7 +62,6 @@ public static class LoggingExtensions
                             { "raise_date", new TimestampColumnWriter() },
                             { "exception", new ExceptionColumnWriter() },
                             { "properties", new LogEventSerializedColumnWriter() },
-                            { "props_test", new PropertiesColumnWriter() },
                             { "machine_name", new SinglePropertyColumnWriter("MachineName") },
                         };
 
