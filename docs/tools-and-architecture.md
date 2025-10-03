@@ -75,44 +75,45 @@ All API errors follow this standardized format:
 
 #### Standard Error Codes
 
-| Error Code | HTTP Status | Description | When It Occurs |
-|------------|-------------|-------------|----------------|
-| `VALIDATION_FAILED` | 400 | Input validation failures | Invalid request data, field validation errors |
-| `DOMAIN_RULE_VIOLATION` | 400 | Business rule violations | Domain logic constraints violated |
-| `INVALID_PARAMETERS` | 400 | Invalid request parameters | Null arguments, invalid parameter values |
-| `INVALID_OPERATION` | 400 | Invalid operation attempts | Operation not allowed in current state |
-| `UNAUTHORIZED_ACCESS` | 401 | Authentication/authorization failures | Missing/invalid credentials, insufficient permissions |
-| `RESOURCE_NOT_FOUND` | 404 | Resource not found | Requested entity doesn't exist |
-| `INTERNAL_SERVER_ERROR` | 500 | Unexpected server errors | Unhandled exceptions, system failures |
+| Error Code              | HTTP Status | Description                           | When It Occurs                                        |
+| ----------------------- | ----------- | ------------------------------------- | ----------------------------------------------------- |
+| `VALIDATION_FAILED`     | 400         | Input validation failures             | Invalid request data, field validation errors         |
+| `DOMAIN_RULE_VIOLATION` | 400         | Business rule violations              | Domain logic constraints violated                     |
+| `INVALID_PARAMETERS`    | 400         | Invalid request parameters            | Null arguments, invalid parameter values              |
+| `INVALID_OPERATION`     | 400         | Invalid operation attempts            | Operation not allowed in current state                |
+| `UNAUTHORIZED_ACCESS`   | 401         | Authentication/authorization failures | Missing/invalid credentials, insufficient permissions |
+| `RESOURCE_NOT_FOUND`    | 404         | Resource not found                    | Requested entity doesn't exist                        |
+| `INTERNAL_SERVER_ERROR` | 500         | Unexpected server errors              | Unhandled exceptions, system failures                 |
 
 #### Client-Side Error Handling
 
 **TypeScript/JavaScript Example:**
+
 ```typescript
 async function handleApiError(response: Response) {
   const error = await response.json();
-  
+
   switch (error.code) {
-    case 'VALIDATION_FAILED':
+    case "VALIDATION_FAILED":
       // Display field-level validation errors
       displayValidationErrors(error.errors);
       break;
-      
-    case 'UNAUTHORIZED_ACCESS':
+
+    case "UNAUTHORIZED_ACCESS":
       // Redirect to login or refresh token
       redirectToLogin();
       break;
-      
-    case 'RESOURCE_NOT_FOUND':
+
+    case "RESOURCE_NOT_FOUND":
       // Show appropriate not found message
       showNotFoundMessage();
       break;
-      
-    case 'DOMAIN_RULE_VIOLATION':
+
+    case "DOMAIN_RULE_VIOLATION":
       // Display business rule error
       showBusinessRuleError(error.message);
       break;
-      
+
     default:
       // Generic error handling
       showGenericError(error.message);
@@ -121,18 +122,20 @@ async function handleApiError(response: Response) {
 ```
 
 **Localization Support:**
+
 ```typescript
 // Use error codes for localization
 const localizedMessage = i18n.t(`errors.${error.code}`, {
-  defaultValue: error.message
+  defaultValue: error.message,
 });
 ```
 
 #### Implementation Details
 
 **Exception Mapping:**
+
 - `ValidationException` → `VALIDATION_FAILED`
-- `DomainException` → `DOMAIN_RULE_VIOLATION`  
+- `DomainException` → `DOMAIN_RULE_VIOLATION`
 - `UnauthorizedAccessException` → `UNAUTHORIZED_ACCESS`
 - `ArgumentException`/`ArgumentNullException` → `INVALID_PARAMETERS`
 - `KeyNotFoundException` → `RESOURCE_NOT_FOUND`
@@ -140,11 +143,13 @@ const localizedMessage = i18n.t(`errors.${error.code}`, {
 - All other exceptions → `INTERNAL_SERVER_ERROR`
 
 **Field-Level Validation Errors:**
+
 - When `ValidationException` contains field-specific errors, they're included in the `errors` object
 - Each field maps to an array of error messages
 - Supports multiple validation errors per field
 
 **Development vs Production:**
+
 - `details` field is only populated in development environment
 - Production responses never expose sensitive debugging information
 - All responses include `traceId` for support and debugging

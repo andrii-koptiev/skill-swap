@@ -48,31 +48,31 @@ All API errors return JSON responses in this format:
 
 ### Response Fields
 
-| Field | Type | Description | Always Present |
-|-------|------|-------------|---------------|
-| `code` | string | Machine-readable error identifier | ✅ |
-| `message` | string | Human-readable error description | ✅ |
-| `errors` | object | Field-level validation errors (if applicable) | ❌ |
-| `traceId` | string | Request trace identifier for debugging | ✅ |
-| `timestamp` | string | Error occurrence time in ISO 8601 format | ✅ |
+| Field       | Type   | Description                                   | Always Present |
+| ----------- | ------ | --------------------------------------------- | -------------- |
+| `code`      | string | Machine-readable error identifier             | ✅             |
+| `message`   | string | Human-readable error description              | ✅             |
+| `errors`    | object | Field-level validation errors (if applicable) | ❌             |
+| `traceId`   | string | Request trace identifier for debugging        | ✅             |
+| `timestamp` | string | Error occurrence time in ISO 8601 format      | ✅             |
 
 ### Standard Error Codes
 
 #### Client Errors (4xx)
 
-| Code | HTTP Status | Description | Typical Causes |
-|------|-------------|-------------|---------------|
-| `VALIDATION_FAILED` | 400 Bad Request | Input validation failed | Missing required fields, invalid format, constraint violations |
-| `DOMAIN_RULE_VIOLATION` | 400 Bad Request | Business rule violated | Attempting invalid business operations |
-| `INVALID_PARAMETERS` | 400 Bad Request | Request parameters invalid | Null/empty required parameters, invalid data types |
-| `INVALID_OPERATION` | 400 Bad Request | Operation not allowed | Action not permitted in current state |
-| `UNAUTHORIZED_ACCESS` | 401 Unauthorized | Authentication/authorization failed | Missing/expired token, insufficient permissions |
-| `RESOURCE_NOT_FOUND` | 404 Not Found | Requested resource doesn't exist | Invalid ID, deleted resource |
+| Code                    | HTTP Status      | Description                         | Typical Causes                                                 |
+| ----------------------- | ---------------- | ----------------------------------- | -------------------------------------------------------------- |
+| `VALIDATION_FAILED`     | 400 Bad Request  | Input validation failed             | Missing required fields, invalid format, constraint violations |
+| `DOMAIN_RULE_VIOLATION` | 400 Bad Request  | Business rule violated              | Attempting invalid business operations                         |
+| `INVALID_PARAMETERS`    | 400 Bad Request  | Request parameters invalid          | Null/empty required parameters, invalid data types             |
+| `INVALID_OPERATION`     | 400 Bad Request  | Operation not allowed               | Action not permitted in current state                          |
+| `UNAUTHORIZED_ACCESS`   | 401 Unauthorized | Authentication/authorization failed | Missing/expired token, insufficient permissions                |
+| `RESOURCE_NOT_FOUND`    | 404 Not Found    | Requested resource doesn't exist    | Invalid ID, deleted resource                                   |
 
 #### Server Errors (5xx)
 
-| Code | HTTP Status | Description | Client Action |
-|------|-------------|-------------|---------------|
+| Code                    | HTTP Status               | Description             | Client Action                                    |
+| ----------------------- | ------------------------- | ----------------------- | ------------------------------------------------ |
 | `INTERNAL_SERVER_ERROR` | 500 Internal Server Error | Unexpected server error | Retry after delay, contact support if persistent |
 
 ### Field-Level Validation Errors
@@ -84,18 +84,13 @@ When validation fails, the `errors` object contains field-specific error message
   "code": "VALIDATION_FAILED",
   "message": "One or more validation failures occurred.",
   "errors": {
-    "Email": [
-      "Email is required",
-      "Email must be a valid email address"
-    ],
+    "Email": ["Email is required", "Email must be a valid email address"],
     "Password": [
       "Password must be at least 8 characters long",
       "Password must contain at least one uppercase letter",
       "Password must contain at least one special character"
     ],
-    "FirstName": [
-      "First name is required"
-    ]
+    "FirstName": ["First name is required"]
   }
 }
 ```
@@ -126,7 +121,7 @@ class ApiClient {
 class ApiError extends Error {
   constructor(public readonly apiError: ApiError) {
     super(apiError.message);
-    this.name = 'ApiError';
+    this.name = "ApiError";
   }
 
   get code(): string {
@@ -148,13 +143,13 @@ try {
 } catch (error) {
   if (error instanceof ApiError) {
     switch (error.code) {
-      case 'VALIDATION_FAILED':
+      case "VALIDATION_FAILED":
         displayValidationErrors(error.fieldErrors);
         break;
-      case 'UNAUTHORIZED_ACCESS':
+      case "UNAUTHORIZED_ACCESS":
         redirectToLogin();
         break;
-      case 'RESOURCE_NOT_FOUND':
+      case "RESOURCE_NOT_FOUND":
         showNotFoundMessage();
         break;
       default:
@@ -167,7 +162,7 @@ try {
 #### React Hook Example
 
 ```typescript
-import { useState } from 'react';
+import { useState } from "react";
 
 interface FormErrors {
   [key: string]: string[];
@@ -188,11 +183,11 @@ export function useApiForm<T>() {
       const result = await apiCall();
       onSuccess?.(result);
     } catch (error) {
-      if (error instanceof ApiError && error.code === 'VALIDATION_FAILED') {
+      if (error instanceof ApiError && error.code === "VALIDATION_FAILED") {
         setErrors(error.fieldErrors || {});
       } else {
         // Handle other error types
-        console.error('API Error:', error);
+        console.error("API Error:", error);
       }
     } finally {
       setIsLoading(false);
@@ -208,7 +203,7 @@ export function useApiForm<T>() {
     isLoading,
     submitForm,
     getFieldError,
-    hasErrors: Object.keys(errors).length > 0
+    hasErrors: Object.keys(errors).length > 0,
   };
 }
 ```
@@ -267,17 +262,17 @@ const errorMessages = {
     DOMAIN_RULE_VIOLATION: "This action is not allowed",
     INVALID_PARAMETERS: "Invalid request data",
     INVALID_OPERATION: "This operation cannot be performed",
-    INTERNAL_SERVER_ERROR: "An unexpected error occurred"
+    INTERNAL_SERVER_ERROR: "An unexpected error occurred",
   },
   es: {
     VALIDATION_FAILED: "Por favor corrige los siguientes errores:",
     UNAUTHORIZED_ACCESS: "Por favor inicia sesión para continuar",
     RESOURCE_NOT_FOUND: "El elemento solicitado no fue encontrado",
     // ... other translations
-  }
+  },
 };
 
-function getLocalizedError(code: string, locale: string = 'en'): string {
+function getLocalizedError(code: string, locale: string = "en"): string {
   return errorMessages[locale]?.[code] || errorMessages.en[code] || code;
 }
 ```
@@ -304,6 +299,7 @@ When rate limits are exceeded, you'll receive a `429 Too Many Requests` response
 ### API Versioning
 
 The API uses URL path versioning:
+
 - Current version: `/api/v1/`
 - Version format: Major version only (v1, v2, etc.)
 - Backward compatibility maintained within major versions
