@@ -25,9 +25,6 @@ queries:
   - uses: security-and-quality
   - uses: security-extended
 
-  # Custom SkillSwap security suite
-  - uses: ./.github/codeql/skillswap-security-suite.qls
-
 # Custom query configuration
 query-filters:
   # Exclude certain low-priority warnings

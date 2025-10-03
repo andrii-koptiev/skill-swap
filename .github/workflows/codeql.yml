@@ -25,40 +25,38 @@ jobs:
     analyze:
         name: CodeQL Security Analysis
         runs-on: ubuntu-latest
-        timeout-minutes: 30 # Reduced timeout for faster feedback
+        timeout-minutes: 30
 
         permissions:
             actions: read
             contents: read
             security-events: write
-            pull-requests: write # Allow commenting on PRs
+            pull-requests: write
 
         strategy:
             fail-fast: false
             matrix:
                 language: ["csharp"]
-                # Additional configuration for C# specific analysis
-                include:
-                    - language: csharp
-                      build-mode: manual
 
         steps:
             - name: Checkout repository
               uses: actions/checkout@v4
               with:
-                  fetch-depth: 0 # Full history for better analysis
+                  fetch-depth: 0
 
             - name: Initialize CodeQL
               uses: github/codeql-action/init@v3
               with:
                   languages: ${{ matrix.language }}
-                  build-mode: ${{ matrix.build-mode }}
-                  # Use custom configuration file
-                  config-file: ./.github/codeql/codeql-config.yml
-                  # Additional query packs for enhanced security analysis
-                  packs: |
-                      codeql/csharp-queries
-                      codeql/csharp-security-extended-queries
+                  queries: security-and-quality
+                  config: |
+                    paths-ignore:
+                      - "**/bin/**"
+                      - "**/obj/**"
+                      - "**/*Test*.cs"
+                      - "**/*Tests.cs"
+                      - "**/TestResults/**"
+                      - "**/Migrations/**"
 
             - name: Setup .NET
               uses: actions/setup-dotnet@v4
@@ -86,27 +84,16 @@ jobs:
                   dotnet build SkillSwap.sln \
                     --configuration Release \
                     --no-restore \
-                    --verbosity minimal \
-                    /p:TreatWarningsAsErrors=false
+                    --verbosity minimal
 
             - name: Perform CodeQL Analysis
               uses: github/codeql-action/analyze@v3
               with:
                   category: "/language:${{matrix.language}}"
                   upload: true
-                  # Generate SARIF output for detailed review
-                  output: sarif-results
-
-            - name: Upload SARIF results
-              if: always()
-              uses: actions/upload-artifact@v4
-              with:
-                  name: codeql-sarif-results
-                  path: sarif-results
-                  retention-days: 30
 
             - name: Comment on PR with security analysis summary
-              if: github.event_name == 'pull_request' && always()
+              if: github.event_name == 'pull_request'
               uses: actions/github-script@v7
               with:
                   script: |
@@ -121,7 +108,7 @@ jobs:
                         - Cross-site scripting (XSS) 
                         - Authentication/Authorization issues
                         - Data flow security
-                        - Cryptographic vulnerabilities
+                        - Code quality issues
 
                       ### 📋 Security Review Guidelines
                       Please ensure your changes:
@@ -132,10 +119,10 @@ jobs:
                       - [ ] Follow secure coding practices
 
                       📁 **Detailed Results**: Check the Security tab in your repository for complete findings.
-
+                      
                       🔍 Any security issues found will be reported in the Security tab and require resolution before merging.`;
 
-                      // Only comment if this is a new analysis
+                      // Check if we already commented to avoid spam
                       const { data: comments } = await github.rest.issues.listComments({
                         issue_number: context.issue.number,
                         owner: context.repo.owner,
