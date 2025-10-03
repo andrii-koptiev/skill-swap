@@ -78,7 +78,8 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasColumnName("status")
             .HasConversion<string>()
             .HasMaxLength(20)
-            .HasDefaultValue(UserStatus.PendingVerification);
+            .HasDefaultValue(UserStatus.PendingVerification)
+            .HasSentinel(UserStatus.Inactive); // Set CLR default as sentinel to distinguish from explicit assignment
 
         builder
             .Property(u => u.VerificationStatus)

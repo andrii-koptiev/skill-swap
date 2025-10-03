@@ -62,11 +62,7 @@ public class RolePermissionConfiguration : IEntityTypeConfiguration<RolePermissi
 
         builder.HasIndex(rp => rp.IsGranted).HasDatabaseName("ix_role_permissions_is_granted");
 
-        // Relationships
-        builder
-            .HasOne(rp => rp.Role)
-            .WithMany()
-            .HasForeignKey(rp => rp.RoleId)
-            .OnDelete(DeleteBehavior.Cascade);
+        // Relationships - Role relationship configured in RoleConfiguration
+        // No additional relationship configuration needed here
     }
 }
