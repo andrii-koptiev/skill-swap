@@ -200,6 +200,7 @@ Focus on areas where:
 
 - **[API Documentation](./api-documentation.md)** - Complete API reference with error handling, authentication, and client examples
 - **[Tools & Architecture](./tools-and-architecture.md)** - Development patterns, architecture decisions, and implementation guidelines
+- **[Repository & Unit of Work](./repository-unitofwork-patterns.md)** - Comprehensive guide to data access patterns, usage examples, and best practices
 - **[Database Schema](./database-schema.md)** - Database design and entity relationships
 - **[Implementation Guide](./implementation-phase1.md)** - Phase 1 development roadmap and priorities
 

@@ -230,5 +230,6 @@ Ready for implementation:
 - **Logging**: Implements observability best practices from architecture doc
 - **Validation**: Follows input validation security requirements
 - **Configuration**: Adheres to middleware ordering and service registration guidelines
+- **Repository & Unit of Work**: See [comprehensive documentation](./repository-unitofwork-patterns.md) for detailed usage patterns and best practices
 
 This implementation provides a solid, production-ready foundation for the SkillSwap API following the clean architecture principles and Phase 1 requirements from the tools and architecture documentation.

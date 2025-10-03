@@ -1,3 +1,4 @@
+using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using SkillSwap.Api.Extensions;
 using SkillSwap.Application.Interfaces;
@@ -66,8 +67,8 @@ public class SkillCategoriesController : ControllerBase
             {
                 Id = category.Id,
                 Name = category.Name,
-                Description = category.Description,
-                ColorHex = category.Color,
+                Description = category.Description ?? string.Empty,
+                ColorHex = category.Color ?? string.Empty,
                 IconUrl = category.Icon,
                 CreatedAt = DateTimeOffset.UtcNow,
                 UpdatedAt = DateTimeOffset.UtcNow,
@@ -110,7 +111,7 @@ public class SkillCategoriesController : ControllerBase
                 Id = category.Id,
                 Name = category.Name,
                 Description = category.Description,
-                ColorHex = category.Color,
+                ColorHex = category.Color ?? string.Empty,
                 IconUrl = category.Icon,
                 CreatedAt = DateTimeOffset.UtcNow,
                 UpdatedAt = DateTimeOffset.UtcNow,
@@ -142,7 +143,7 @@ public class SkillCategoriesController : ControllerBase
             {
                 Id = category.Id,
                 Name = category.Name,
-                Description = category.Description,
+                Description = category.Description ?? string.Empty,
                 ColorHex = category.Color,
                 IconUrl = category.Icon,
                 CreatedAt = DateTimeOffset.UtcNow,
@@ -163,6 +164,20 @@ public class SkillCategoriesController : ControllerBase
 
     private static string GenerateSlug(string name)
     {
-        return name.ToLowerInvariant().Replace(" ", "-").Replace("&", "and").Trim('-');
+        if (string.IsNullOrWhiteSpace(name))
+            return string.Empty;
+
+        return name.ToLowerInvariant()
+            .Replace(" ", "-")
+            .Replace("&", "and")
+            .Replace("'", "")
+            .Replace("\"", "")
+            // Remove any non-alphanumeric characters except hyphens
+            .Where(c => char.IsLetterOrDigit(c) || c == '-')
+            .Aggregate(new StringBuilder(), (sb, c) => sb.Append(c))
+            .ToString()
+            .Trim('-')
+            // Remove consecutive hyphens
+            .Replace("--", "-");
     }
 }
