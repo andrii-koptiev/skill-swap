@@ -1,0 +1,38 @@
+# SkillSwap Custom Security Query Suite
+# This suite includes both standard CodeQL queries and custom queries
+# specific to the SkillSwap application architecture
+
+- description: "SkillSwap Application Security Analysis"
+- queries: .
+- qlpack: codeql/csharp-queries
+
+# Standard security queries
+- include:
+    kind: problem
+    tags: security
+
+# Data flow and taint tracking
+- include:
+    kind: path-problem 
+    tags: security
+
+# Custom SkillSwap queries
+- queries: ./custom-queries
+- include:
+    id: csharp/skillswap-security
+
+# ASP.NET Core specific security patterns  
+- include:
+    tags: 
+      - security
+      - external/cwe/cwe-79    # XSS
+      - external/cwe/cwe-89    # SQL Injection  
+      - external/cwe/cwe-200   # Information Exposure
+      - external/cwe/cwe-209   # Information Exposure Through Error Messages
+      - external/cwe/cwe-259   # Hard-coded Password
+      - external/cwe/cwe-327   # Broken Cryptography
+      - external/cwe/cwe-352   # CSRF
+
+# Exclude test files and generated code
+- exclude:
+    tags: test

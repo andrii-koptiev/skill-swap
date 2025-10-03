@@ -297,12 +297,13 @@ jobs:
           if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
             echo "quality-review=true" >> $GITHUB_OUTPUT
             echo "✅ Quality review requested via manual trigger"
-          elif [[ "${{ contains(github.event.pull_request.labels.*.name, 'quality-review') }}" == "true" ]]; then
+          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            # Always enable quality review for pull requests
             echo "quality-review=true" >> $GITHUB_OUTPUT
-            echo "✅ Quality review requested via PR label"
+            echo "✅ Quality review enabled for all pull requests"
           else
             echo "quality-review=false" >> $GITHUB_OUTPUT
-            echo "ℹ️ Quality review not requested. Add 'quality-review' label to enable issue creation."
+            echo "ℹ️ Quality review not applicable for this event"
           fi
 
       - name: Checkout code
