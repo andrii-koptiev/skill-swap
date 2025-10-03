@@ -32,7 +32,28 @@ public class ExceptionHandlingMiddleware
         {
             await _next(context);
         }
+        catch (OperationCanceledException ex) when (context.RequestAborted.IsCancellationRequested)
+        {
+            // Client disconnected or request was cancelled - log as info, not error
+            _logger.LogInformation(
+                ex,
+                "Request cancelled for {RequestPath} {RequestMethod}. TraceId: {TraceId}",
+                LoggingExtensions.SanitizeRequestPathForLog(context.Request.Path),
+                LoggingExtensions.SanitizeRequestPathForLog(context.Request.Method),
+                context.TraceIdentifier
+            );
+            // Don't handle cancellation - let it propagate with context
+            throw new OperationCanceledException(
+                $"Request {context.Request.Method} {context.Request.Path} was cancelled. TraceId: {context.TraceIdentifier}",
+                ex
+            );
+        }
         catch (Exception ex)
+            when (ex
+                    is not StackOverflowException
+                        and not OutOfMemoryException
+                        and not ThreadAbortException
+            )
         {
             // Sanitize Path and Method to prevent log forging
             _logger.LogError(
@@ -44,6 +65,8 @@ public class ExceptionHandlingMiddleware
 
             await HandleExceptionAsync(context, ex);
         }
+        // Critical exceptions (StackOverflowException, OutOfMemoryException, ThreadAbortException)
+        // are intentionally not caught and will propagate up
     }
 
     private async Task HandleExceptionAsync(HttpContext context, Exception exception)
