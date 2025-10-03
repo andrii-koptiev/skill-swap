@@ -261,12 +261,36 @@ jobs:
 
           # Check for common security issues
           echo "Checking for hardcoded secrets..."
-          if grep -r "password\|secret\|key" --include="*.cs" --include="*.json" src/ | grep -v "Password" | grep -v "PasswordHash"; then
-            echo "⚠️ Potential hardcoded secrets found"
+
+          # Look for actual hardcoded credentials (strings with = assignments)
+          SECURITY_ISSUES=""
+
+          # Check for hardcoded passwords (excluding legitimate variable names and comments)
+          if grep -r "password\s*=\s*[\"']" --include="*.cs" --include="*.json" src/ | grep -v "//"; then
+            SECURITY_ISSUES="hardcoded_password"
+          fi
+
+          # Check for API keys or secrets in assignments
+          if grep -r "\(secret\|apikey\|api_key\)\s*=\s*[\"'][^\"']*[\"']" --include="*.cs" --include="*.json" src/ | grep -v "//"; then
+            SECURITY_ISSUES="${SECURITY_ISSUES} hardcoded_secrets"
+          fi
+
+          # Check for connection strings with embedded credentials
+          if grep -r "Server=.*Password=" --include="*.cs" --include="*.json" src/ | grep -v "//"; then
+            SECURITY_ISSUES="${SECURITY_ISSUES} connection_string_creds"
+          fi
+
+          # Check for bearer tokens or auth tokens
+          if grep -r "\(token\|bearer\)\s*=\s*[\"'][A-Za-z0-9+/=]{20,}[\"']" --include="*.cs" --include="*.json" src/ | grep -v "//"; then
+            SECURITY_ISSUES="${SECURITY_ISSUES} hardcoded_tokens"
+          fi
+
+          if [ -n "$SECURITY_ISSUES" ]; then
+            echo "⚠️ Potential hardcoded secrets found: $SECURITY_ISSUES"
             exit 1
           fi
 
-          echo "✅ Basic security checks passed"
+          echo "✅ No hardcoded secrets detected"
 
       - name: Dependency vulnerability scan
         working-directory: ./services/api
