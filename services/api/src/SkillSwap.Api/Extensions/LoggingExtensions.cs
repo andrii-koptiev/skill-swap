@@ -78,6 +78,10 @@ public static class LoggingExtensions
                 if (environment.Equals("Development", StringComparison.OrdinalIgnoreCase))
                 {
                     loggerConfig.MinimumLevel.Debug();
+                    
+                    // Add Seq sink for development - provides web UI for logs
+                    var seqUrl = configuration["Seq:ServerUrl"] ?? "http://localhost:5341";
+                    loggerConfig.WriteTo.Seq(seqUrl);
                 }
             }
         );
