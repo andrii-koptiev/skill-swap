@@ -287,15 +287,30 @@ jobs:
   create-quality-issues:
     name: Create Code Quality Issues
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'quality-review'))
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request'
     needs: code-analysis
 
     steps:
+      - name: Check if quality review is requested
+        id: check-quality-review
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "quality-review=true" >> $GITHUB_OUTPUT
+            echo "✅ Quality review requested via manual trigger"
+          elif [[ "${{ contains(github.event.pull_request.labels.*.name, 'quality-review') }}" == "true" ]]; then
+            echo "quality-review=true" >> $GITHUB_OUTPUT
+            echo "✅ Quality review requested via PR label"
+          else
+            echo "quality-review=false" >> $GITHUB_OUTPUT
+            echo "ℹ️ Quality review not requested. Add 'quality-review' label to enable issue creation."
+          fi
+
       - name: Checkout code
+        if: steps.check-quality-review.outputs.quality-review == 'true'
         uses: actions/checkout@v4
 
       - name: Create technical debt issue
-        if: always()
+        if: steps.check-quality-review.outputs.quality-review == 'true'
         uses: actions/github-script@v7
         with:
           script: |
