@@ -50,13 +50,13 @@ jobs:
                   languages: ${{ matrix.language }}
                   queries: security-and-quality
                   config: |
-                    paths-ignore:
-                      - "**/bin/**"
-                      - "**/obj/**"
-                      - "**/*Test*.cs"
-                      - "**/*Tests.cs"
-                      - "**/TestResults/**"
-                      - "**/Migrations/**"
+                      paths-ignore:
+                        - "**/bin/**"
+                        - "**/obj/**"
+                        - "**/*Test*.cs"
+                        - "**/*Tests.cs"
+                        - "**/TestResults/**"
+                        - "**/Migrations/**"
 
             - name: Setup .NET
               uses: actions/setup-dotnet@v4
@@ -119,7 +119,7 @@ jobs:
                       - [ ] Follow secure coding practices
 
                       📁 **Detailed Results**: Check the Security tab in your repository for complete findings.
-                      
+
                       🔍 Any security issues found will be reported in the Security tab and require resolution before merging.`;
 
                       // Check if we already commented to avoid spam

@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text.Json;
+using SkillSwap.Api.Extensions;
 using SkillSwap.Domain.Common;
 
 namespace SkillSwap.Api.Middleware;
@@ -33,11 +34,12 @@ public class ExceptionHandlingMiddleware
         }
         catch (Exception ex)
         {
+            // Sanitize Path and Method to prevent log forging
             _logger.LogError(
                 ex,
                 "An unhandled exception occurred while processing request {RequestPath} {RequestMethod}",
-                context.Request.Path,
-                context.Request.Method
+                LoggingExtensions.SanitizeRequestPathForLog(context.Request.Path),
+                LoggingExtensions.SanitizeRequestPathForLog(context.Request.Method)
             );
 
             await HandleExceptionAsync(context, ex);
@@ -120,7 +122,7 @@ public class ExceptionHandlingMiddleware
     }
 
     private (HttpStatusCode, ErrorDetails) HandleDomainValidationException(
-        SkillSwap.Domain.Common.ValidationException domainValidationEx
+        ValidationException domainValidationEx
     )
     {
         // Use existing domain validation errors if available, otherwise normalize from exception

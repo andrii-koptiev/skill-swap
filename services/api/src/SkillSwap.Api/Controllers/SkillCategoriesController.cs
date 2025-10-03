@@ -1,5 +1,6 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
+using SkillSwap.Api.Extensions;
 using SkillSwap.Contracts.Requests;
 
 namespace SkillSwap.Api.Controllers;
@@ -36,7 +37,10 @@ public class SkillCategoriesController : ControllerBase
         [FromBody] CreateSkillCategoryRequest request
     )
     {
-        _logger.LogInformation("Creating skill category with name: {CategoryName}", request.Name);
+        _logger.LogInformation(
+            "Creating skill category with name: {CategoryName}",
+            LoggingExtensions.SanitizeRequestNameForLog(request.Name)
+        );
 
         // Validate the request
         var validationResult = await _validator.ValidateAsync(request);
@@ -52,7 +56,7 @@ public class SkillCategoriesController : ControllerBase
         // TODO: Implement actual creation logic
         _logger.LogInformation(
             "Skill category '{CategoryName}' created successfully",
-            request.Name
+            LoggingExtensions.SanitizeRequestNameForLog(request.Name)
         );
 
         return NoContent();

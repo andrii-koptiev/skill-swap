@@ -157,4 +157,29 @@ public static class LoggingExtensions
             diagnosticContext.Set("ResponseLength", httpContext.Response.ContentLength.Value);
         }
     }
+
+    /// <summary>
+    /// Sanitizes a string for safe logging by removing new-line/control characters.
+    /// </summary>
+    /// <param name="input">The input string to sanitize.</param>
+    /// <returns>A sanitized string safe for logging, or null if input is null.</returns>
+    public static string? SanitizeRequestNameForLog(string? requestName)
+    {
+        if (requestName == null)
+            return null;
+
+        // Remove all CR, LF, and ASCII control characters except tab (0x09).
+        var sanitized = new string([.. requestName.Where(c => c >= 0x20 || c == '\t')]);
+        return sanitized;
+    }
+
+    public static string SanitizeRequestPathForLog(string? requestPath)
+    {
+        if (requestPath == null)
+            return string.Empty;
+        return requestPath
+            .Replace("\r", string.Empty)
+            .Replace("\n", string.Empty)
+            .Replace(Environment.NewLine, string.Empty);
+    }
 }

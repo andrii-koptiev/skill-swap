@@ -73,16 +73,16 @@ public sealed class ValidationMiddleware
             // and get the appropriate validator based on the controller action
             _logger.LogDebug(
                 "Request validation completed for {RequestPath}",
-                context.Request.Path
+                LoggingExtensions.SanitizeRequestPathForLog(context.Request.Path)
             );
             await Task.CompletedTask;
         }
-        catch (Exception ex)
+        catch (ValidationException ex)
         {
             _logger.LogError(
                 ex,
                 "Error during request validation for {RequestPath}",
-                context.Request.Path
+                LoggingExtensions.SanitizeRequestPathForLog(context.Request.Path)
             );
             throw new SkillSwap.Domain.Common.ValidationException("Request validation failed");
         }
