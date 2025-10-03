@@ -78,16 +78,9 @@ public sealed class CreateSkillRequestValidator : AbstractValidator<CreateSkillR
 /// <summary>
 /// Validator for RegisterUserRequest.
 /// </summary>
-public sealed class RegisterUserRequestValidator : AbstractValidator<RegisterUserRequest>
+public sealed partial class RegisterUserRequestValidator : AbstractValidator<RegisterUserRequest>
 {
-    private static readonly Regex TimeZoneRegex = new(
-        @"^[A-Za-z_]+\/[A-Za-z_]+$",
-        RegexOptions.Compiled
-    );
-    private static readonly Regex LanguageRegex = new(
-        @"^[a-z]{2}(-[A-Z]{2})?$",
-        RegexOptions.Compiled
-    );
+    private static readonly Regex LanguageRegex = LanguageCodeRegex();
 
     public RegisterUserRequestValidator()
     {
@@ -158,12 +151,14 @@ public sealed class RegisterUserRequestValidator : AbstractValidator<RegisterUse
         }
         catch (TimeZoneNotFoundException)
         {
-            // Also accept common timezone formats
-            return TimeZoneRegex.IsMatch(timeZone);
+            return false;
         }
         catch (InvalidTimeZoneException)
         {
             return false;
         }
     }
+
+    [GeneratedRegex(@"^[a-z]{2}(-[A-Z]{2})?$", RegexOptions.Compiled)]
+    private static partial Regex LanguageCodeRegex();
 }

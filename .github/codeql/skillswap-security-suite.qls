@@ -3,8 +3,8 @@
 # specific to the SkillSwap application architecture
 
 - description: "SkillSwap Application Security Analysis"
-- queries: .
-- qlpack: codeql/csharp-queries
+  queries: .
+  qlpack: codeql/csharp-queries
 
 # Standard security queries
 - include:
@@ -18,7 +18,7 @@
 
 # Custom SkillSwap queries
 - queries: ./custom-queries
-- include:
+  include:
     id: csharp/skillswap-security
 
 # ASP.NET Core specific security patterns  

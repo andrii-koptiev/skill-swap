@@ -51,8 +51,8 @@ where
   controller.getName().matches("%Controller%") and
   method.getDeclaringType() = controller and
   method.isPublic() and
-  method.getName().matches("Get%") or method.getName().matches("Post%") or 
-  method.getName().matches("Put%") or method.getName().matches("Delete%") and
+  (method.getName().matches("Get%") or method.getName().matches("Post%") or 
+   method.getName().matches("Put%") or method.getName().matches("Delete%")) and
   not exists(Attribute attr | 
     attr.getTarget() = method and 
     (attr.getType().getName() = "Authorize" or attr.getType().getName() = "AllowAnonymous")

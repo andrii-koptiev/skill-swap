@@ -66,12 +66,9 @@ try
     // 4. Security headers and HTTPS
     app.UseHttpsRedirection();
 
-    // 5. Validation middleware
-    app.UseValidation();
+    // 5. Authentication and Authorization (when implemented)
 
-    // 6. Authentication and Authorization (when implemented)
-
-    // 7. Map controllers and health checks
+    // 6. Map controllers and health checks
     app.MapControllers();
     app.MapHealthChecks("/health");
 

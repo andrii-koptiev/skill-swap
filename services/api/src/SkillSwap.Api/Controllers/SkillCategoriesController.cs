@@ -1,7 +1,7 @@
-using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
 using SkillSwap.Api.Extensions;
 using SkillSwap.Contracts.Requests;
+using SkillSwap.Contracts.Responses;
 
 namespace SkillSwap.Api.Controllers;
 
@@ -14,15 +14,10 @@ namespace SkillSwap.Api.Controllers;
 public class SkillCategoriesController : ControllerBase
 {
     private readonly ILogger<SkillCategoriesController> _logger;
-    private readonly IValidator<CreateSkillCategoryRequest> _validator;
 
-    public SkillCategoriesController(
-        ILogger<SkillCategoriesController> logger,
-        IValidator<CreateSkillCategoryRequest> validator
-    )
+    public SkillCategoriesController(ILogger<SkillCategoriesController> logger)
     {
         _logger = logger;
-        _validator = validator;
     }
 
     /// <summary>
@@ -31,9 +26,9 @@ public class SkillCategoriesController : ControllerBase
     /// <param name="request">The skill category creation request.</param>
     /// <returns>The created skill category.</returns>
     [HttpPost]
-    [ProducesResponseType(typeof(CreateSkillCategoryRequest), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(SkillCategoryResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<CreateSkillCategoryRequest>> CreateSkillCategory(
+    public Task<ActionResult<SkillCategoryResponse>> CreateSkillCategory(
         [FromBody] CreateSkillCategoryRequest request
     )
     {
@@ -42,24 +37,30 @@ public class SkillCategoriesController : ControllerBase
             LoggingExtensions.SanitizeRequestNameForLog(request.Name)
         );
 
-        // Validate the request
-        var validationResult = await _validator.ValidateAsync(request);
-        if (!validationResult.IsValid)
-        {
-            foreach (var error in validationResult.Errors)
-            {
-                ModelState.AddModelError(error.PropertyName, error.ErrorMessage);
-            }
-            return BadRequest(ModelState);
-        }
+        // TODO: Implement actual creation logic with repository/service
+        var now = DateTimeOffset.UtcNow;
+        var categoryId = Guid.NewGuid();
 
-        // TODO: Implement actual creation logic
+        var createdCategory = new SkillCategoryResponse
+        {
+            Id = categoryId,
+            Name = request.Name,
+            Description = request.Description,
+            ColorHex = request.ColorHex,
+            IconUrl = request.IconUrl,
+            CreatedAt = now,
+            UpdatedAt = now,
+        };
+
         _logger.LogInformation(
-            "Skill category '{CategoryName}' created successfully",
-            LoggingExtensions.SanitizeRequestNameForLog(request.Name)
+            "Skill category '{CategoryName}' created successfully with ID: {CategoryId}",
+            LoggingExtensions.SanitizeRequestNameForLog(request.Name),
+            categoryId
         );
 
-        return NoContent();
+        return Task.FromResult<ActionResult<SkillCategoryResponse>>(
+            CreatedAtAction(nameof(GetSkillCategory), new { id = categoryId }, createdCategory)
+        );
     }
 
     /// <summary>
@@ -68,9 +69,9 @@ public class SkillCategoriesController : ControllerBase
     /// <param name="id">The skill category ID.</param>
     /// <returns>The skill category.</returns>
     [HttpGet("{id:guid}")]
-    [ProducesResponseType(typeof(CreateSkillCategoryRequest), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(SkillCategoryResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<CreateSkillCategoryRequest>> GetSkillCategory(Guid id)
+    public async Task<ActionResult<SkillCategoryResponse>> GetSkillCategory(Guid id)
     {
         _logger.LogInformation("Getting skill category with ID: {CategoryId}", id);
 
@@ -93,29 +94,36 @@ public class SkillCategoriesController : ControllerBase
     /// </summary>
     /// <returns>List of skill categories.</returns>
     [HttpGet]
-    [ProducesResponseType(typeof(IEnumerable<CreateSkillCategoryRequest>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<IEnumerable<CreateSkillCategoryRequest>>> GetSkillCategories()
+    [ProducesResponseType(typeof(IEnumerable<SkillCategoryResponse>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<IEnumerable<SkillCategoryResponse>>> GetSkillCategories()
     {
         _logger.LogInformation("Getting all skill categories");
 
         // TODO: Implement actual retrieval logic
         await Task.Delay(1); // Simulate async operation
 
+        var now = DateTimeOffset.UtcNow;
         var sampleCategories = new[]
         {
-            new CreateSkillCategoryRequest
+            new SkillCategoryResponse
             {
+                Id = Guid.NewGuid(),
                 Name = "Technology",
                 Description = "Programming, software development, and technical skills",
                 ColorHex = "#0078D4",
                 IconUrl = null,
+                CreatedAt = now.AddDays(-30),
+                UpdatedAt = now.AddDays(-30),
             },
-            new CreateSkillCategoryRequest
+            new SkillCategoryResponse
             {
+                Id = Guid.NewGuid(),
                 Name = "Creative",
                 Description = "Art, design, music, and creative skills",
                 ColorHex = "#E74C3C",
                 IconUrl = null,
+                CreatedAt = now.AddDays(-25),
+                UpdatedAt = now.AddDays(-25),
             },
         };
 
