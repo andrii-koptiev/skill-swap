@@ -1,10 +1,14 @@
 using System.Text;
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using SkillSwap.Api.Extensions;
-using SkillSwap.Application.Interfaces;
+using SkillSwap.Application.Features.SkillCategories.Commands.CreateSkillCategory;
+using SkillSwap.Application.Features.SkillCategories.Commands.DeleteSkillCategory;
+using SkillSwap.Application.Features.SkillCategories.Commands.UpdateSkillCategory;
+using SkillSwap.Application.Features.SkillCategories.Queries.GetAllSkillCategories;
+using SkillSwap.Application.Features.SkillCategories.Queries.GetSkillCategoryById;
 using SkillSwap.Contracts.Requests;
 using SkillSwap.Contracts.Responses;
-using SkillSwap.Domain.Entities;
 
 namespace SkillSwap.Api.Controllers;
 
@@ -13,15 +17,12 @@ namespace SkillSwap.Api.Controllers;
 [Produces("application/json")]
 public class SkillCategoriesController : ControllerBase
 {
-    private readonly IUnitOfWork _unitOfWork;
+    private readonly IMediator _mediator;
     private readonly ILogger<SkillCategoriesController> _logger;
 
-    public SkillCategoriesController(
-        IUnitOfWork unitOfWork,
-        ILogger<SkillCategoriesController> logger
-    )
+    public SkillCategoriesController(IMediator mediator, ILogger<SkillCategoriesController> logger)
     {
-        _unitOfWork = unitOfWork ?? throw new ArgumentNullException(nameof(unitOfWork));
+        _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -39,42 +40,32 @@ public class SkillCategoriesController : ControllerBase
 
         try
         {
-            var existingCategory = await _unitOfWork.SkillCategories.GetByNameAsync(request.Name);
-
-            if (existingCategory != null)
+            var command = new CreateSkillCategoryCommand
             {
-                return BadRequest(new { message = "A category with this name already exists." });
-            }
+                Name = request.Name,
+                Description = request.Description,
+                ColorHex = request.ColorHex,
+                IconUrl = request.IconUrl,
+            };
 
-            var category = new SkillCategory(
-                name: request.Name,
-                description: request.Description,
-                slug: GenerateSlug(request.Name),
-                color: request.ColorHex,
-                icon: request.IconUrl
-            );
-
-            await _unitOfWork.SkillCategories.AddAsync(category);
-            await _unitOfWork.SaveChangesAsync();
+            var response = await _mediator.Send(command);
 
             _logger.LogInformation(
                 "Successfully created skill category {CategoryId} with name: {CategoryName}",
-                category.Id,
-                category.Name
+                response.Id,
+                response.Name
             );
 
-            var response = new SkillCategoryResponse
-            {
-                Id = category.Id,
-                Name = category.Name,
-                Description = category.Description ?? string.Empty,
-                ColorHex = category.Color ?? string.Empty,
-                IconUrl = category.Icon,
-                CreatedAt = DateTimeOffset.UtcNow,
-                UpdatedAt = DateTimeOffset.UtcNow,
-            };
-
-            return CreatedAtAction(nameof(GetSkillCategory), new { id = category.Id }, response);
+            return CreatedAtAction(nameof(GetSkillCategory), new { id = response.Id }, response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Business rule violation while creating skill category: {CategoryName}",
+                request.Name
+            );
+            return BadRequest(new { message = ex.Message });
         }
         catch (Exception ex)
         {
@@ -99,23 +90,13 @@ public class SkillCategoriesController : ControllerBase
 
         try
         {
-            var category = await _unitOfWork.SkillCategories.GetByIdAsync(id);
+            var query = new GetSkillCategoryByIdQuery { Id = id };
+            var response = await _mediator.Send(query);
 
-            if (category == null)
+            if (response == null)
             {
                 return NotFound(new { message = $"Skill category with ID {id} not found." });
             }
-
-            var response = new SkillCategoryResponse
-            {
-                Id = category.Id,
-                Name = category.Name,
-                Description = category.Description,
-                ColorHex = category.Color ?? string.Empty,
-                IconUrl = category.Icon,
-                CreatedAt = DateTimeOffset.UtcNow,
-                UpdatedAt = DateTimeOffset.UtcNow,
-            };
 
             return Ok(response);
         }
@@ -137,18 +118,8 @@ public class SkillCategoriesController : ControllerBase
 
         try
         {
-            var categories = await _unitOfWork.SkillCategories.GetActiveAsync();
-
-            var responses = categories.Select(category => new SkillCategoryResponse
-            {
-                Id = category.Id,
-                Name = category.Name,
-                Description = category.Description ?? string.Empty,
-                ColorHex = category.Color,
-                IconUrl = category.Icon,
-                CreatedAt = DateTimeOffset.UtcNow,
-                UpdatedAt = DateTimeOffset.UtcNow,
-            });
+            var query = new GetAllSkillCategoriesQuery();
+            var responses = await _mediator.Send(query);
 
             return Ok(responses);
         }
@@ -160,24 +131,5 @@ public class SkillCategoriesController : ControllerBase
                 new { message = "An error occurred while retrieving skill categories." }
             );
         }
-    }
-
-    private static string GenerateSlug(string name)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-            return string.Empty;
-
-        return name.ToLowerInvariant()
-            .Replace(" ", "-")
-            .Replace("&", "and")
-            .Replace("'", "")
-            .Replace("\"", "")
-            // Remove any non-alphanumeric characters except hyphens
-            .Where(c => char.IsLetterOrDigit(c) || c == '-')
-            .Aggregate(new StringBuilder(), (sb, c) => sb.Append(c))
-            .ToString()
-            .Trim('-')
-            // Remove consecutive hyphens
-            .Replace("--", "-");
     }
 }

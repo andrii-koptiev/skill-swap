@@ -200,6 +200,8 @@ Focus on areas where:
 
 - **[API Documentation](./api-documentation.md)** - Complete API reference with error handling, authentication, and client examples
 - **[Tools & Architecture](./tools-and-architecture.md)** - Development patterns, architecture decisions, and implementation guidelines
+- **[CQRS & MediatR Guide](./cqrs-mediatr-guide.md)** - Comprehensive guide to CQRS pattern implementation with MediatR
+- **[CQRS Quick Reference](./cqrs-quick-reference.md)** - Templates, code snippets, and common patterns for rapid development
 - **[Repository & Unit of Work](./repository-unitofwork-patterns.md)** - Comprehensive guide to data access patterns, usage examples, and best practices
 - **[Database Schema](./database-schema.md)** - Database design and entity relationships
 - **[Implementation Guide](./implementation-phase1.md)** - Phase 1 development roadmap and priorities
