@@ -10,7 +10,7 @@ using SkillSwap.Contracts.Responses;
 namespace SkillSwap.Api.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/skill-categories")]
 [Produces("application/json")]
 public class SkillCategoriesController : ControllerBase
 {

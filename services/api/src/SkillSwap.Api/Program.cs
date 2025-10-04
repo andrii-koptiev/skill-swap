@@ -40,6 +40,11 @@ try
     // Add repositories and Unit of Work
     builder.Services.AddRepositories();
 
+    // Add MediatR
+    builder.Services.AddMediatR(cfg =>
+        cfg.RegisterServicesFromAssembly(typeof(SkillSwap.Application.AssemblyReference).Assembly)
+    );
+
     // Add validation services
     builder.Services.AddValidation();
 
