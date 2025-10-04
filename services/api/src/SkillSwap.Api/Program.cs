@@ -4,6 +4,7 @@ using SkillSwap.Api.Extensions;
 using SkillSwap.Api.Middleware;
 using SkillSwap.Infrastructure.Data;
 using SkillSwap.Infrastructure.Data.Extensions;
+using SkillSwap.Infrastructure.Extensions;
 
 // Configure Serilog early for startup logging
 var builder = WebApplication.CreateBuilder(args);
@@ -34,6 +35,14 @@ try
     // Add Entity Framework and PostgreSQL
     builder.Services.AddDbContext<SkillSwapDbContext>(options =>
         options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"))
+    );
+
+    // Add repositories and Unit of Work
+    builder.Services.AddRepositories();
+
+    // Add MediatR
+    builder.Services.AddMediatR(cfg =>
+        cfg.RegisterServicesFromAssembly(typeof(SkillSwap.Application.AssemblyReference).Assembly)
     );
 
     // Add validation services

@@ -1,34 +1,32 @@
+using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using SkillSwap.Api.Extensions;
+using SkillSwap.Application.Features.SkillCategories.Commands.CreateSkillCategory;
+using SkillSwap.Application.Features.SkillCategories.Queries.GetAllSkillCategories;
+using SkillSwap.Application.Features.SkillCategories.Queries.GetSkillCategoryById;
 using SkillSwap.Contracts.Requests;
 using SkillSwap.Contracts.Responses;
 
 namespace SkillSwap.Api.Controllers;
 
-/// <summary>
-/// Controller for managing skill categories.
-/// </summary>
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/skill-categories")]
 [Produces("application/json")]
 public class SkillCategoriesController : ControllerBase
 {
+    private readonly IMediator _mediator;
     private readonly ILogger<SkillCategoriesController> _logger;
 
-    public SkillCategoriesController(ILogger<SkillCategoriesController> logger)
+    public SkillCategoriesController(IMediator mediator, ILogger<SkillCategoriesController> logger)
     {
-        _logger = logger;
+        _mediator = mediator ?? throw new ArgumentNullException(nameof(mediator));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    /// <summary>
-    /// Creates a new skill category.
-    /// </summary>
-    /// <param name="request">The skill category creation request.</param>
-    /// <returns>The created skill category.</returns>
     [HttpPost]
     [ProducesResponseType(typeof(SkillCategoryResponse), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public Task<ActionResult<SkillCategoryResponse>> CreateSkillCategory(
+    public async Task<ActionResult<SkillCategoryResponse>> CreateSkillCategory(
         [FromBody] CreateSkillCategoryRequest request
     )
     {
@@ -37,37 +35,70 @@ public class SkillCategoriesController : ControllerBase
             LoggingExtensions.SanitizeRequestNameForLog(request.Name)
         );
 
-        // TODO: Implement actual creation logic with repository/service
-        var now = DateTimeOffset.UtcNow;
-        var categoryId = Guid.NewGuid();
-
-        var createdCategory = new SkillCategoryResponse
+        try
         {
-            Id = categoryId,
-            Name = request.Name,
-            Description = request.Description,
-            ColorHex = request.ColorHex,
-            IconUrl = request.IconUrl,
-            CreatedAt = now,
-            UpdatedAt = now,
-        };
+            var command = new CreateSkillCategoryCommand
+            {
+                Name = request.Name,
+                Description = request.Description,
+                ColorHex = request.ColorHex,
+                IconUrl = request.IconUrl,
+            };
 
-        _logger.LogInformation(
-            "Skill category '{CategoryName}' created successfully with ID: {CategoryId}",
-            LoggingExtensions.SanitizeRequestNameForLog(request.Name),
-            categoryId
-        );
+            var response = await _mediator.Send(command);
 
-        return Task.FromResult<ActionResult<SkillCategoryResponse>>(
-            CreatedAtAction(nameof(GetSkillCategory), new { id = categoryId }, createdCategory)
-        );
+            _logger.LogInformation(
+                "Successfully created skill category {CategoryId} with name: {CategoryName}",
+                response.Id,
+                response.Name
+            );
+
+            return CreatedAtAction(nameof(GetSkillCategory), new { id = response.Id }, response);
+        }
+        catch (InvalidOperationException ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Business rule violation while creating skill category: {CategoryName}",
+                LoggingExtensions.SanitizeRequestNameForLog(request.Name)
+            );
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Invalid input while creating skill category: {CategoryName}",
+                LoggingExtensions.SanitizeRequestNameForLog(request.Name)
+            );
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogError(
+                ex,
+                "Timeout occurred while creating skill category with name: {CategoryName}",
+                LoggingExtensions.SanitizeRequestNameForLog(request.Name)
+            );
+            return StatusCode(
+                504,
+                new { message = "The request timed out while creating the skill category." }
+            );
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+                ex,
+                "Error creating skill category with name: {CategoryName}",
+                LoggingExtensions.SanitizeRequestNameForLog(request.Name)
+            );
+            return StatusCode(
+                500,
+                new { message = "An unexpected error occurred while creating the skill category." }
+            );
+        }
     }
 
-    /// <summary>
-    /// Gets a skill category by ID.
-    /// </summary>
-    /// <param name="id">The skill category ID.</param>
-    /// <returns>The skill category.</returns>
     [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(SkillCategoryResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -75,58 +106,58 @@ public class SkillCategoriesController : ControllerBase
     {
         _logger.LogInformation("Getting skill category with ID: {CategoryId}", id);
 
-        // TODO: Implement actual retrieval logic
-        await Task.Delay(1); // Simulate async operation
+        try
+        {
+            var query = new GetSkillCategoryByIdQuery { Id = id };
+            var response = await _mediator.Send(query);
 
-        return NotFound(
-            new ProblemDetails
+            if (response == null)
             {
-                Status = StatusCodes.Status404NotFound,
-                Title = "Skill Category Not Found",
-                Detail = $"Skill category with ID {id} not found",
-                Instance = HttpContext?.Request?.Path,
+                return NotFound(new { message = $"Skill category with ID {id} not found." });
             }
-        );
+
+            return Ok(response);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Skill category with ID: {CategoryId} not found (exception).",
+                id
+            );
+            return NotFound(new { message = $"Skill category with ID {id} not found." });
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Invalid argument when retrieving skill category with ID: {CategoryId}.",
+                id
+            );
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving skill category with ID: {CategoryId}", id);
+            return StatusCode(
+                500,
+                new
+                {
+                    message = "An unexpected error occurred while retrieving the skill category.",
+                }
+            );
+        }
     }
 
-    /// <summary>
-    /// Gets all skill categories.
-    /// </summary>
-    /// <returns>List of skill categories.</returns>
     [HttpGet]
     [ProducesResponseType(typeof(IEnumerable<SkillCategoryResponse>), StatusCodes.Status200OK)]
     public async Task<ActionResult<IEnumerable<SkillCategoryResponse>>> GetSkillCategories()
     {
         _logger.LogInformation("Getting all skill categories");
 
-        // TODO: Implement actual retrieval logic
-        await Task.Delay(1); // Simulate async operation
+        var query = new GetAllSkillCategoriesQuery();
+        var responses = await _mediator.Send(query);
 
-        var now = DateTimeOffset.UtcNow;
-        var sampleCategories = new[]
-        {
-            new SkillCategoryResponse
-            {
-                Id = Guid.NewGuid(),
-                Name = "Technology",
-                Description = "Programming, software development, and technical skills",
-                ColorHex = "#0078D4",
-                IconUrl = null,
-                CreatedAt = now.AddDays(-30),
-                UpdatedAt = now.AddDays(-30),
-            },
-            new SkillCategoryResponse
-            {
-                Id = Guid.NewGuid(),
-                Name = "Creative",
-                Description = "Art, design, music, and creative skills",
-                ColorHex = "#E74C3C",
-                IconUrl = null,
-                CreatedAt = now.AddDays(-25),
-                UpdatedAt = now.AddDays(-25),
-            },
-        };
-
-        return Ok(sampleCategories);
+        return Ok(responses);
     }
 }
