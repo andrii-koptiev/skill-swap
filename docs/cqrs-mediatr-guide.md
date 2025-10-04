@@ -274,7 +274,41 @@ SkillSwap.Application/
 - Ignore cancellation tokens
 - Swallow exceptions without logging
 
-### 3. Validation
+### 3. Error Handling
+
+✅ **DO:**
+
+- Use domain exceptions for business rule violations
+- Let global exception middleware handle error responses
+- Throw exceptions directly in handlers for error conditions
+- Use specific exception types (DomainException, ValidationException)
+- Focus handlers on happy path scenarios
+
+❌ **DON'T:**
+
+- Use Result pattern with CQRS (conflicts with MediatR pipeline)
+- Handle exceptions within handlers (let middleware handle it)
+- Return null for not found scenarios (throw NotFoundException)
+- Mix exception and Result patterns
+
+**Exception-Based Error Handling Example:**
+
+```csharp
+public async Task<SkillCategoryResponse> Handle(
+    GetSkillCategoryByIdQuery request,
+    CancellationToken cancellationToken)
+{
+    var category = await _unitOfWork.SkillCategories.GetByIdAsync(request.Id);
+
+    // ✅ Throw exception - middleware will convert to proper HTTP response
+    if (category == null)
+        throw new NotFoundException($"Skill category with ID {request.Id} not found");
+
+    return new SkillCategoryResponse(category.Id, category.Name, category.Description);
+}
+```
+
+### 4. Validation
 
 ✅ **DO:**
 
