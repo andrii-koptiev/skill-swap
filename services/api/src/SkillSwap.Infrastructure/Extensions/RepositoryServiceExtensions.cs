@@ -17,7 +17,7 @@ public static class RepositoryServiceExtensions
     /// <returns>Service collection for method chaining</returns>
     public static IServiceCollection AddRepositories(this IServiceCollection services)
     {
-        // Register Unit of Work
+        // Register Unit of Work - requires ILoggerFactory
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         // Register specific repositories

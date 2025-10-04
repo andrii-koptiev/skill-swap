@@ -99,7 +99,6 @@ public class Repository<T> : IRepository<T>
         }
         else
         {
-            // Default ordering by Id if no order specified
             query = query.OrderBy(x => x.Id);
         }
 

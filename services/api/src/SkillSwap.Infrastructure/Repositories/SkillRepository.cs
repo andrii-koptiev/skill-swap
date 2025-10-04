@@ -87,7 +87,7 @@ public class SkillRepository : Repository<Skill>, ISkillRepository
     {
         var query = _dbSet.Where(s => s.Name == name && s.CategoryId == categoryId);
 
-        if (excludeId.HasValue)
+        if (excludeId is not null)
         {
             query = query.Where(s => s.Id != excludeId.Value);
         }

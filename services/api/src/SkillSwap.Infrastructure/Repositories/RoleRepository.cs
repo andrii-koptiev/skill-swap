@@ -39,7 +39,7 @@ public class RoleRepository : Repository<Role>, IRoleRepository
     {
         var query = _dbSet.Where(r => r.Name == name);
 
-        if (excludeId.HasValue)
+        if (excludeId is not null)
         {
             query = query.Where(r => r.Id != excludeId.Value);
         }

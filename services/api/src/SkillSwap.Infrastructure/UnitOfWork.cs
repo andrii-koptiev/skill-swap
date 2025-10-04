@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.Logging;
 using SkillSwap.Application.Interfaces;
 using SkillSwap.Application.Interfaces.Repositories;
 using SkillSwap.Domain.Common;
@@ -14,6 +15,7 @@ namespace SkillSwap.Infrastructure;
 public class UnitOfWork : IUnitOfWork
 {
     private readonly SkillSwapDbContext _context;
+    private readonly ILoggerFactory _loggerFactory;
     private readonly Dictionary<Type, object> _repositories = new();
     private bool _disposed;
 
@@ -28,9 +30,10 @@ public class UnitOfWork : IUnitOfWork
     private IUserRoleRepository? _userRoles;
     private IRolePermissionRepository? _rolePermissions;
 
-    public UnitOfWork(SkillSwapDbContext context)
+    public UnitOfWork(SkillSwapDbContext context, ILoggerFactory loggerFactory)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
+        _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
     }
 
     public IUserRepository Users => _users ??= new UserRepository(_context);
@@ -75,7 +78,9 @@ public class UnitOfWork : IUnitOfWork
         var transaction = await _context
             .Database.BeginTransactionAsync(cancellationToken)
             .ConfigureAwait(false);
-        return new UnitOfWorkTransaction(transaction);
+
+        var transactionLogger = _loggerFactory.CreateLogger<UnitOfWorkTransaction>();
+        return new UnitOfWorkTransaction(transaction, transactionLogger);
     }
 
     public IRepository<T> Repository<T>()
@@ -83,9 +88,9 @@ public class UnitOfWork : IUnitOfWork
     {
         var type = typeof(T);
 
-        if (_repositories.ContainsKey(type))
+        if (_repositories.TryGetValue(type, out var repo))
         {
-            return (IRepository<T>)_repositories[type];
+            return (IRepository<T>)repo;
         }
 
         var repository = new Repository<T>(_context);
@@ -116,11 +121,16 @@ public class UnitOfWork : IUnitOfWork
 public class UnitOfWorkTransaction : IUnitOfWorkTransaction
 {
     private readonly IDbContextTransaction _transaction;
+    private readonly ILogger<UnitOfWorkTransaction> _logger;
     private bool _disposed;
 
-    public UnitOfWorkTransaction(IDbContextTransaction transaction)
+    public UnitOfWorkTransaction(
+        IDbContextTransaction transaction,
+        ILogger<UnitOfWorkTransaction> logger
+    )
     {
         _transaction = transaction ?? throw new ArgumentNullException(nameof(transaction));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     public async Task CommitAsync(CancellationToken cancellationToken = default)
@@ -129,23 +139,68 @@ public class UnitOfWorkTransaction : IUnitOfWorkTransaction
         {
             await _transaction.CommitAsync(cancellationToken).ConfigureAwait(false);
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
         {
+            // Attempt rollback, but preserve the original commit exception
             await RollbackAsync(cancellationToken).ConfigureAwait(false);
             throw new InvalidOperationException("Failed to commit transaction.", ex);
+        }
+        catch (DbUpdateException ex)
+        {
+            await RollbackAsync(cancellationToken).ConfigureAwait(false);
+            throw new InvalidOperationException(
+                "Failed to commit transaction (database update failure).",
+                ex
+            );
         }
     }
 
     public async Task RollbackAsync(CancellationToken cancellationToken = default)
     {
+        await RollbackSafelyAsync(cancellationToken, null).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Safely performs rollback without throwing exceptions that could mask the original exception.
+    /// Logs rollback failures instead of throwing.
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <param name="originalException">The original exception that caused the rollback, if any</param>
+    private async Task RollbackSafelyAsync(
+        CancellationToken cancellationToken,
+        Exception? originalException
+    )
+    {
         try
         {
             await _transaction.RollbackAsync(cancellationToken).ConfigureAwait(false);
+
+            if (originalException != null)
+            {
+                _logger.LogWarning(
+                    "Transaction rollback completed successfully after failed commit. Original exception: {Exception}",
+                    originalException.Message
+                );
+            }
+            else
+            {
+                _logger.LogInformation("Transaction rollback completed successfully");
+            }
         }
-        catch (Exception ex)
+        catch (DbUpdateException ex)
+        {
+            throw new InvalidOperationException(
+                "Failed to rollback transaction due to database update error.",
+                ex
+            );
+        }
+        catch (InvalidOperationException ex)
         {
             // Log rollback failure but don't throw to avoid masking original exception
-            throw new InvalidOperationException("Failed to rollback transaction.", ex);
+            throw new InvalidOperationException(
+                "Failed to rollback transaction due to invalid operation.",
+                ex
+            );
         }
     }
 

@@ -1,10 +1,7 @@
-using System.Text;
 using MediatR;
 using Microsoft.AspNetCore.Mvc;
 using SkillSwap.Api.Extensions;
 using SkillSwap.Application.Features.SkillCategories.Commands.CreateSkillCategory;
-using SkillSwap.Application.Features.SkillCategories.Commands.DeleteSkillCategory;
-using SkillSwap.Application.Features.SkillCategories.Commands.UpdateSkillCategory;
 using SkillSwap.Application.Features.SkillCategories.Queries.GetAllSkillCategories;
 using SkillSwap.Application.Features.SkillCategories.Queries.GetSkillCategoryById;
 using SkillSwap.Contracts.Requests;
@@ -63,20 +60,41 @@ public class SkillCategoriesController : ControllerBase
             _logger.LogWarning(
                 ex,
                 "Business rule violation while creating skill category: {CategoryName}",
-                request.Name
+                LoggingExtensions.SanitizeRequestNameForLog(request.Name)
             );
             return BadRequest(new { message = ex.Message });
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Invalid input while creating skill category: {CategoryName}",
+                LoggingExtensions.SanitizeRequestNameForLog(request.Name)
+            );
+            return BadRequest(new { message = ex.Message });
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogError(
+                ex,
+                "Timeout occurred while creating skill category with name: {CategoryName}",
+                LoggingExtensions.SanitizeRequestNameForLog(request.Name)
+            );
+            return StatusCode(
+                504,
+                new { message = "The request timed out while creating the skill category." }
+            );
         }
         catch (Exception ex)
         {
             _logger.LogError(
                 ex,
                 "Error creating skill category with name: {CategoryName}",
-                request.Name
+                LoggingExtensions.SanitizeRequestNameForLog(request.Name)
             );
             return StatusCode(
                 500,
-                new { message = "An error occurred while creating the skill category." }
+                new { message = "An unexpected error occurred while creating the skill category." }
             );
         }
     }
@@ -100,12 +118,33 @@ public class SkillCategoriesController : ControllerBase
 
             return Ok(response);
         }
+        catch (KeyNotFoundException ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Skill category with ID: {CategoryId} not found (exception).",
+                id
+            );
+            return NotFound(new { message = $"Skill category with ID {id} not found." });
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(
+                ex,
+                "Invalid argument when retrieving skill category with ID: {CategoryId}.",
+                id
+            );
+            return BadRequest(new { message = ex.Message });
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error retrieving skill category with ID: {CategoryId}", id);
             return StatusCode(
                 500,
-                new { message = "An error occurred while retrieving the skill category." }
+                new
+                {
+                    message = "An unexpected error occurred while retrieving the skill category.",
+                }
             );
         }
     }
@@ -116,20 +155,9 @@ public class SkillCategoriesController : ControllerBase
     {
         _logger.LogInformation("Getting all skill categories");
 
-        try
-        {
-            var query = new GetAllSkillCategoriesQuery();
-            var responses = await _mediator.Send(query);
+        var query = new GetAllSkillCategoriesQuery();
+        var responses = await _mediator.Send(query);
 
-            return Ok(responses);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving skill categories");
-            return StatusCode(
-                500,
-                new { message = "An error occurred while retrieving skill categories." }
-            );
-        }
+        return Ok(responses);
     }
 }
